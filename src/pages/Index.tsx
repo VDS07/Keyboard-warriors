@@ -16,7 +16,7 @@ const PropertyMap = lazy(() =>
 );
 
 const toCurrency = (price: number) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(price);
+  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(price);
 
 const TRANSPORT_MODES: { value: TransportMode; label: string; icon: typeof Car }[] = [
   { value: "drive", label: "Drive", icon: Car },
@@ -114,10 +114,10 @@ const Index = () => {
               <SelectValue placeholder="Pricing" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="2500">Up to $2,500</SelectItem>
-              <SelectItem value="3000">Up to $3,000</SelectItem>
-              <SelectItem value="3500">Up to $3,500</SelectItem>
-              <SelectItem value="10000">Any Price</SelectItem>
+              <SelectItem value="15000">Up to ₹15,000</SelectItem>
+              <SelectItem value="25000">Up to ₹25,000</SelectItem>
+              <SelectItem value="50000">Up to ₹50,000</SelectItem>
+              <SelectItem value="100000">Any Price</SelectItem>
             </SelectContent>
           </Select>
         </div>

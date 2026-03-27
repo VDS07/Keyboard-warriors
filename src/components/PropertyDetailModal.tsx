@@ -47,7 +47,7 @@ export function PropertyDetailModal({ property, open, onClose }: Props) {
 
           {/* Price + Livability */}
           <div className="flex items-center justify-between">
-            <div className="text-3xl font-bold text-primary">${property.price.toLocaleString()}<span className="text-sm text-white/40 font-normal">/mo</span></div>
+            <div className="text-3xl font-bold text-primary">₹{property.price.toLocaleString("en-IN")}<span className="text-sm text-white/40 font-normal">/mo</span></div>
             <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${getLivabilityColor(property.livabilityScore)}`}>
               <Star className="w-4 h-4" />
               <span className="font-bold text-sm">{property.livabilityScore}</span>

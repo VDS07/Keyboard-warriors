@@ -160,7 +160,7 @@ export default function OwnerDashboard() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-mono font-bold">${property.price.toLocaleString()}</div>
+                            <div className="font-mono font-bold">₹{property.price.toLocaleString("en-IN")}</div>
                           <div className="text-[10px] text-muted-foreground mt-0.5">Current listed</div>
                         </div>
                       </div>
@@ -173,7 +173,7 @@ export default function OwnerDashboard() {
                             {isUnderpriced ? (
                               <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-[10px] px-1.5 py-0 h-4 shadow-none">
                                 <AlertCircle className="w-3 h-3 mr-1"/>
-                                Underpriced by ${priceDiff}
+                                Underpriced by ₹{priceDiff}
                               </Badge>
                             ) : (
                               <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20 text-[10px] px-1.5 py-0 h-4 shadow-none">
@@ -183,7 +183,7 @@ export default function OwnerDashboard() {
                           </div>
                           <p className="text-[11px] text-muted-foreground">
                             Based on your commute advantage score of {property.demandScore}/100 and nearby demand, recommended rent is 
-                            <span className="font-medium text-foreground ml-1">${property.recommendedPrice}</span>.
+                            <span className="font-medium text-foreground ml-1">₹{property.recommendedPrice}</span>.
                           </p>
                         </div>
                       )}

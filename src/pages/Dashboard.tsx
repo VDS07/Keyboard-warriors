@@ -6,11 +6,11 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 const PRICE_RANGES = [
-  { label: "$1k–2k", min: 1000, max: 2000, color: "#6366f1" },
-  { label: "$2k–2.5k", min: 2000, max: 2500, color: "#8b5cf6" },
-  { label: "$2.5k–3k", min: 2500, max: 3000, color: "#a78bfa" },
-  { label: "$3k–3.5k", min: 3000, max: 3500, color: "#c4b5fd" },
-  { label: "$3.5k+", min: 3500, max: 99999, color: "#ddd6fe" },
+  { label: "₹10k–15k", min: 10000, max: 15000, color: "#6366f1" },
+  { label: "₹15k–25k", min: 15000, max: 25000, color: "#8b5cf6" },
+  { label: "₹25k–40k", min: 25000, max: 40000, color: "#a78bfa" },
+  { label: "₹40k–60k", min: 40000, max: 60000, color: "#c4b5fd" },
+  { label: "₹60k+", min: 60000, max: 999999, color: "#ddd6fe" },
 ];
 
 const TYPE_COLORS: Record<string, string> = {
@@ -29,8 +29,7 @@ export default function Dashboard() {
   const avgRent = Math.round(properties.reduce((s, p) => s + p.price, 0) / totalListings);
   const avgLivability = Math.round(properties.reduce((s, p) => s + p.livabilityScore, 0) / totalListings);
 
-  // Most popular neighborhood (most frequent area based on lat grouping)
-  const neighborhoods = ["Midtown", "Chelsea", "Brooklyn", "Queens", "Upper West"];
+  const neighborhoods = ["Dharampeth", "Koramangala", "Bandra", "HITEC City", "Koregaon Park"];
   const popularNeighborhood = neighborhoods[Math.floor(Math.random() * neighborhoods.length)];
 
   // Price distribution
@@ -68,7 +67,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{totalListings}</div>
-              <p className="text-xs text-muted-foreground">Across NYC</p>
+              <p className="text-xs text-muted-foreground">Across India</p>
             </CardContent>
           </Card>
 
@@ -78,7 +77,7 @@ export default function Dashboard() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${avgRent.toLocaleString()}</div>
+              <div className="text-2xl font-bold">₹{avgRent.toLocaleString("en-IN")}</div>
               <p className="text-xs text-muted-foreground"><span className="text-emerald-500">+2.3%</span> vs last quarter</p>
             </CardContent>
           </Card>

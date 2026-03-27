@@ -38,7 +38,7 @@ export function PropertyCard({ property, isFocused, onFocus, onClick }: Props) {
           ⏱️ {property.commuteMinutes}m
         </Badge>
         <div className="absolute bottom-2 left-2 text-lg font-bold text-white drop-shadow-lg">
-          ${property.price.toLocaleString()}<span className="text-xs font-normal text-white/70">/mo</span>
+          ₹{property.price.toLocaleString("en-IN")}<span className="text-xs font-normal text-white/70">/mo</span>
         </div>
       </div>
 

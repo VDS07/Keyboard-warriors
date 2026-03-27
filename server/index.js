@@ -1,15 +1,16 @@
-import express from 'express';
-import cors from 'cors';
-
+const express = require('express');
+const cors = require('cors');
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 const properties = [
-  { id: 1, title: 'Harborview Studio', price: 2100, recommendedPrice: 2400, commuteAdvantage: "10 mins to Financial District", demandScore: 92, lat: 40.7449, lng: -73.9952, views: 145, inquiries: 12 },
-  { id: 2, title: 'Riverside Loft', price: 2980, recommendedPrice: 2900, commuteAdvantage: "15 mins to Midtown Tech Park", demandScore: 85, lat: 40.7323, lng: -74.0079, views: 320, inquiries: 45 },
-  { id: 3, title: 'Chelsea Corner', price: 2650, recommendedPrice: 3000, commuteAdvantage: "5 mins to Chelsea Market", demandScore: 95, lat: 40.7465, lng: -74.0014, views: 89, inquiries: 3 },
-  { id: 4, title: 'Midtown Nest', price: 3200, recommendedPrice: 3100, commuteAdvantage: "Walking distance to Times Square", demandScore: 78, lat: 40.7558, lng: -73.9845, views: 412, inquiries: 80 }
+  { id: 1, title: 'Dharampeth Heritage Flat', price: 18000, recommendedPrice: 21000, commuteAdvantage: "5 mins to Law College Square", demandScore: 82, lat: 21.1500, lng: 79.0800, views: 245, inquiries: 22 },
+  { id: 2, title: 'Sadar Luxury Studio', price: 12000, recommendedPrice: 14000, commuteAdvantage: "Near Sadar Bus Stand", demandScore: 75, lat: 21.1552, lng: 79.0880, views: 180, inquiries: 15 },
+  { id: 3, title: 'Koramangala 3BHK', price: 45000, recommendedPrice: 48000, commuteAdvantage: "10 mins to Forum Mall", demandScore: 90, lat: 12.9352, lng: 77.6245, views: 520, inquiries: 85 },
+  { id: 4, title: 'Bandra Sea-View', price: 85000, recommendedPrice: 82000, commuteAdvantage: "Walking to Bandstand", demandScore: 95, lat: 19.0596, lng: 72.8295, views: 812, inquiries: 120 },
+  { id: 5, title: 'HITEC City 2BHK', price: 22000, recommendedPrice: 25000, commuteAdvantage: "Near Microsoft Campus", demandScore: 83, lat: 17.4435, lng: 78.3772, views: 310, inquiries: 42 },
+  { id: 6, title: 'Hinjewadi Phase 1', price: 18000, recommendedPrice: 20000, commuteAdvantage: "5 mins to Rajiv Gandhi IT Park", demandScore: 76, lat: 18.5912, lng: 73.7380, views: 198, inquiries: 18 },
 ];
 
 app.get('/api/properties', (req, res) => {
@@ -23,11 +24,9 @@ app.get('/api/owner/stats', (req, res) => {
     totalProperties: properties.length,
     totalViews,
     totalInquiries,
-    activeListings: properties.length
+    activeListings: properties.length,
   });
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Backend server running on http://localhost:${PORT}`);
-});
+const PORT = 3001;
+app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
