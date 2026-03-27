@@ -1,6 +1,6 @@
 import { useRef, useState, Suspense, lazy, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,15 +23,6 @@ export default function SellerPage() {
   const [locationSearch, setLocationSearch] = useState("");
   const [mapCenter, setMapCenter] = useState({ lat: 21.1458, lng: 79.0882 });
 
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"]
-  });
-
-  const mapWidth = useTransform(scrollYProgress, [0, 0.35], ["100%", "300px"]);
-  const mapHeight = useTransform(scrollYProgress, [0, 0.35], ["100%", "300px"]);
-  const mapRadius = useTransform(scrollYProgress, [0, 0.35], ["0px", "50%"]);
-
   const handleLocationSearch = async (e: FormEvent) => {
     e.preventDefault();
     if (!locationSearch.trim()) return;
@@ -49,7 +40,7 @@ export default function SellerPage() {
   };
 
   return (
-    <div ref={containerRef} className="relative bg-zinc-950 text-white font-sans" style={{ height: "250vh" }}>
+    <div ref={containerRef} className="relative bg-zinc-950 text-white font-sans" style={{ height: "100vh" }}>
 
       {/* Floating Step Indicator */}
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[500] flex items-center gap-2 bg-zinc-900/90 backdrop-blur-xl border border-white/10 rounded-full px-4 py-2 shadow-2xl">
@@ -74,9 +65,8 @@ export default function SellerPage() {
         
         {/* Left: Interactive Map */}
         <div className="relative flex items-center justify-center w-1/2 p-6">
-          <motion.div
-            className="relative overflow-hidden shadow-2xl border border-white/10 bg-black"
-            style={{ width: mapWidth, height: mapHeight, borderRadius: mapRadius }}
+          <div
+            className="relative overflow-hidden shadow-2xl border border-white/10 bg-black w-[420px] h-[420px] rounded-full"
           >
             <Suspense fallback={<div className="w-full h-full bg-zinc-900 animate-pulse" />}>
               <PropertyMap
@@ -85,12 +75,13 @@ export default function SellerPage() {
                 focusedPropertyId={null}
                 toCurrency={(p) => `₹${p}`}
                 onPropertyFocus={() => {}}
+                hideControls={true}
               />
             </Suspense>
-          </motion.div>
+          </div>
 
           {/* Map overlay hint */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full text-[11px] text-white/50 border border-white/10">
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full text-[11px] text-white/50 border border-white/10">
             📍 Pin your property location on the map
           </div>
         </div>
