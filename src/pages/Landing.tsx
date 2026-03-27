@@ -96,7 +96,7 @@ export default function Landing() {
         )}
       </AnimatePresence>
 
-      {/* 3. Role Selection Screen */}
+      {/* 3. Role Selection Screen (MODERN MODAL) */}
       <AnimatePresence>
         {step === "role" && (
           <motion.div 
@@ -104,42 +104,66 @@ export default function Landing() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, filter: "blur(20px)" }}
             transition={{ delay: 0.3, duration: 0.5 }}
-            className="absolute inset-0 z-20 flex flex-col"
+            className="absolute inset-0 z-20 flex items-center justify-center p-6 bg-zinc-950/80 backdrop-blur-md"
           >
-            <div className="absolute top-12 left-1/2 -translate-x-1/2 text-center pointer-events-none z-30">
-               <div className="bg-black/40 backdrop-blur-md px-6 py-2 rounded-full border border-white/10 uppercase tracking-widest text-sm font-semibold mb-2">
-                 Choose who you are
-               </div>
-            </div>
-            
-            <div className="flex-1 flex flex-col md:flex-row w-full h-full">
-              {/* Property Buyer Half */}
-              <button 
-                onClick={() => handleRoleSelect("buyer")}
-                className="flex-1 relative group overflow-hidden border-b md:border-b-0 md:border-r border-white/10 bg-black/30 hover:bg-black/50 transition-colors backdrop-blur-sm flex items-center justify-center cursor-pointer"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="flex flex-col items-center gap-6 transform group-hover:scale-110 transition-transform duration-500">
-                  <div className="p-6 bg-white/5 rounded-full border border-white/10 group-hover:border-blue-500/50 transition-colors">
-                    <UserCircle className="w-16 h-16 text-blue-400" />
-                  </div>
-                  <span className="text-4xl md:text-5xl font-light tracking-tight text-white/90">Property Buyer</span>
+            {/* Modal Container */}
+            <div className="w-full max-w-4xl bg-[#0a0a0a] border border-white/10 rounded-[32px] p-8 md:p-12 shadow-2xl relative overflow-hidden">
+              
+              {/* Background gradient subtle */}
+              <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-600/5 rounded-full blur-[120px] -z-10 translate-x-1/2 -translate-y-1/2"></div>
+              
+              {/* TOP HEADER */}
+              <div className="flex items-start justify-between mb-12">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/40 mb-1">Step 2</p>
+                  <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white leading-tight">Choose your journey</h2>
                 </div>
-              </button>
+                {/* User email badge */}
+                <div className="bg-white/5 border border-white/10 rounded-full px-4 py-1.5 flex items-center gap-2">
+                  <span className="text-[11px] font-medium text-white/50 lowercase">vallabhshingroop@gmail.com</span>
+                </div>
+              </div>
 
-              {/* Property Owner Half */}
-              <button 
-                 onClick={() => handleRoleSelect("owner")}
-                 className="flex-1 relative group overflow-hidden bg-black/30 hover:bg-black/50 transition-colors backdrop-blur-sm flex items-center justify-center cursor-pointer"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="flex flex-col items-center gap-6 transform group-hover:scale-110 transition-transform duration-500">
-                  <div className="p-6 bg-white/5 rounded-full border border-white/10 group-hover:border-emerald-500/50 transition-colors">
-                    <Building2 className="w-16 h-16 text-emerald-400" />
-                  </div>
-                  <span className="text-4xl md:text-5xl font-light tracking-tight text-white/90">Property Owner</span>
-                </div>
-              </button>
+              {/* CARD OPTIONS GRID */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                
+                {/* OPTION A: PROPERTY OWNER */}
+                <button 
+                  onClick={() => handleRoleSelect("owner")}
+                  className="group relative text-left p-8 rounded-[24px] bg-[#111111] border border-white/5 hover:border-purple-500/50 transition-all duration-500 hover:shadow-[0_0_40px_rgba(168,85,247,0.1)] active:scale-[0.98]"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-[24px]"></div>
+                  <p className="text-[10px] uppercase tracking-widest font-black text-white/30 mb-4 group-hover:text-purple-400/50 transition-colors">Option A</p>
+                  <h3 className="text-2xl font-bold text-white mb-4">Property Owner</h3>
+                  <p className="text-sm text-white/40 leading-relaxed font-medium">
+                    List properties, track buyer interest, and manage responses.
+                  </p>
+                </button>
+
+                {/* OPTION B: PROPERTY BUYER */}
+                <button 
+                  onClick={() => handleRoleSelect("buyer")}
+                  className="group relative text-left p-8 rounded-[24px] border border-purple-500/20 bg-[#111111] hover:border-purple-500/50 transition-all duration-500 hover:shadow-[0_0_40px_rgba(168,85,247,0.1)] active:scale-[0.98]"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-30 group-hover:opacity-100 transition-opacity duration-500 rounded-[24px]"></div>
+                  <p className="text-[10px] uppercase tracking-widest font-black text-white/30 mb-4 group-hover:text-purple-400/50 transition-colors">Option B</p>
+                  <h3 className="text-2xl font-bold text-white mb-4 text-purple-100">Property Buyer</h3>
+                  <p className="text-sm text-white/40 leading-relaxed font-medium">
+                    Explore commute-aware homes and jump into the live map.
+                  </p>
+                </button>
+              </div>
+
+              {/* LOGOUT BUTTON */}
+              <div className="flex justify-end">
+                <button 
+                  onClick={() => setStep("login")}
+                  className="bg-black hover:bg-zinc-900 border border-white/5 px-8 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest text-white/60 hover:text-white transition-all active:scale-95"
+                >
+                  Logout
+                </button>
+              </div>
+
             </div>
           </motion.div>
         )}
