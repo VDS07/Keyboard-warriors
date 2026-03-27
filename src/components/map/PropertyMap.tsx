@@ -139,7 +139,6 @@ export const PropertyMap = ({ workplace, properties, focusedPropertyId, toCurren
   const zoomTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [popupPropertyId, setPopupPropertyId] = useState<number | null>(null);
   const [mapViewMode, setMapViewMode] = useState<MapViewMode>("normal");
-  const [locationInput, setLocationInput] = useState("");
   
   const focusedProperty = properties.find((property) => property.id === focusedPropertyId);
 
@@ -167,38 +166,6 @@ export const PropertyMap = ({ workplace, properties, focusedPropertyId, toCurren
       lat,
       lng,
     });
-  };
-
-  // Handle location search or link pasting
-  const handleLocationSubmit = async (e?: FormEvent) => {
-    e?.preventDefault();
-    if (!locationInput.trim()) return;
-
-    // Try to parse Google Maps link for coordinates
-    const coordMatch = locationInput.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-    if (coordMatch) {
-      const lat = parseFloat(coordMatch[1]);
-      const lng = parseFloat(coordMatch[2]);
-      setWorkplace({ label: "Location from Link", lat, lng });
-      setLocationInput("");
-      return;
-    }
-
-    // Fallback to geocoding (OpenStreetMap Nominatim)
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationInput)}&limit=1`);
-      const data = await res.json();
-      if (data && data[0]) {
-        setWorkplace({
-          label: data[0].display_name.split(',')[0],
-          lat: parseFloat(data[0].lat),
-          lng: parseFloat(data[0].lon),
-        });
-        setLocationInput("");
-      }
-    } catch (err) {
-      console.error("Geocoding error", err);
-    }
   };
 
   useEffect(() => {
@@ -248,32 +215,6 @@ export const PropertyMap = ({ workplace, properties, focusedPropertyId, toCurren
 
   return (
     <div className="map-dark-theme relative h-full w-full group/map">
-      {/* Floating Workplace Search Bar */}
-      {!hideControls && (
-        <div className="absolute top-5 left-1/2 -translate-x-1/2 z-[600] w-[90%] max-w-md">
-          <form onSubmit={handleLocationSubmit} className="relative group/search">
-            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-white/40 group-focus-within/search:text-primary transition-colors">
-              <Search className="w-4 h-4" />
-            </div>
-            <Input
-              value={locationInput}
-              onChange={(e) => setLocationInput(e.target.value)}
-              placeholder="Enter workplace or paste Google Maps link..."
-              className="w-full bg-black/40 backdrop-blur-2xl border-white/10 hover:border-white/20 focus:border-primary/50 pl-12 pr-12 h-12 rounded-2xl text-sm shadow-2xl transition-all"
-            />
-            <div className="absolute inset-y-0 right-3 flex items-center gap-1">
-               <div className="bg-white/5 p-1.5 rounded-lg border border-white/10 text-white/30" title="Paste Map Link">
-                 <Link2 className="w-4 h-4" />
-               </div>
-            </div>
-          </form>
-          <div className="mt-2 text-center">
-            <span className="text-[10px] text-white/30 uppercase tracking-widest font-bold bg-black/20 px-3 py-1 rounded-full border border-white/5 backdrop-blur-sm">
-              Tip: You can also click anywhere on the map to set workplace
-            </span>
-          </div>
-        </div>
-      )}
 
       <Map
         ref={mapRef}

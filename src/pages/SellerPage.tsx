@@ -19,9 +19,12 @@ type FormStep = "property" | "owner" | "preview";
 export default function SellerPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<FormStep>("property");
   const [locationSearch, setLocationSearch] = useState("");
   const [mapCenter, setMapCenter] = useState({ lat: 21.1458, lng: 79.0882 });
+  const [propertyImages, setPropertyImages] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleLocationSearch = async (e: FormEvent) => {
     e.preventDefault();
@@ -33,6 +36,23 @@ export default function SellerPage() {
     } catch { /* fallback */ }
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    setIsUploading(true);
+    // Simulate upload delay
+    setTimeout(() => {
+      const newImages = Array.from(files).map(file => URL.createObjectURL(file));
+      setPropertyImages(prev => [...prev, ...newImages]);
+      setIsUploading(false);
+    }, 1000);
+  };
+
+  const removeImage = (index: number) => {
+    setPropertyImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const stepColors = {
     property: "from-primary/20 to-blue-500/10",
     owner: "from-emerald-500/20 to-teal-500/10",
@@ -41,8 +61,18 @@ export default function SellerPage() {
 
   return (
     <div ref={containerRef} className="relative bg-zinc-950 text-white font-sans" style={{ height: "100vh" }}>
+      {/* Hidden File Input */}
+      <input 
+        type="file" 
+        multiple 
+        accept="image/*" 
+        ref={fileInputRef} 
+        onChange={handleImageUpload} 
+        className="hidden" 
+      />
 
       {/* Floating Step Indicator */}
+      {/* ... (existing floating step indicator) */}
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[500] flex items-center gap-2 bg-zinc-900/90 backdrop-blur-xl border border-white/10 rounded-full px-4 py-2 shadow-2xl">
         {(["property", "owner", "preview"] as FormStep[]).map((s, i) => (
           <button
@@ -64,6 +94,7 @@ export default function SellerPage() {
       <div className="sticky top-0 h-screen flex overflow-hidden">
         
         {/* Left: Interactive Map */}
+        {/* ... (mostly same only workplace title change) */}
         <div className="relative flex items-center justify-center w-1/2 p-6">
           <div
             className="relative overflow-hidden shadow-2xl border border-white/10 bg-black w-[420px] h-[420px] rounded-full"
@@ -96,6 +127,7 @@ export default function SellerPage() {
             transition={{ duration: 0.5 }}
             className={`bg-gradient-to-br ${stepColors.property} bg-black/40 backdrop-blur-2xl border border-white/10 p-7 rounded-3xl shadow-2xl relative mb-8`}
           >
+            {/* ... (beginning of property details) */}
             <div className="absolute -top-8 -right-8 w-28 h-28 bg-primary/20 rounded-full blur-3xl -z-10" />
 
             <div className="flex items-center gap-2 mb-4">
@@ -107,38 +139,82 @@ export default function SellerPage() {
             </div>
 
             <div className="space-y-4">
-              {/* Listing Purpose */}
-              <div>
-                <label className="text-xs text-white/60 uppercase tracking-wider mb-1.5 block">Listing Purpose</label>
-                <Select defaultValue="rent">
-                  <SelectTrigger className="bg-white/5 border-white/10 h-11 text-white focus:ring-primary/50">
-                    <SelectValue placeholder="Select purpose..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="rent">🏠 For Rent</SelectItem>
-                    <SelectItem value="sell">🏡 For Sale</SelectItem>
-                    <SelectItem value="plot">📐 Sell Plot/Land</SelectItem>
-                  </SelectContent>
-                </Select>
+              {/* Listing Purpose + Property Type Row */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-white/60 uppercase tracking-wider mb-1.5 block">Listing Purpose</label>
+                  <Select defaultValue="rent">
+                    <SelectTrigger className="bg-white/5 border-white/10 h-11 text-white focus:ring-primary/50">
+                      <SelectValue placeholder="Purpose" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="rent">🏠 Rent</SelectItem>
+                      <SelectItem value="sell">🏡 Sell</SelectItem>
+                      <SelectItem value="plot">📐 Plot</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs text-white/60 uppercase tracking-wider mb-1.5 block">Property Type</label>
+                  <Select defaultValue="apartment">
+                    <SelectTrigger className="bg-white/5 border-white/10 h-11 text-white focus:ring-primary/50">
+                      <SelectValue placeholder="Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="apartment">Apartment</SelectItem>
+                      <SelectItem value="villa">Villa</SelectItem>
+                      <SelectItem value="plot">Land/Plot</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              {/* Property Type */}
-              <div>
-                <label className="text-xs text-white/60 uppercase tracking-wider mb-1.5 block">Property Type</label>
-                <Select defaultValue="apartment">
-                  <SelectTrigger className="bg-white/5 border-white/10 h-11 text-white focus:ring-primary/50">
-                    <SelectValue placeholder="Select type..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="apartment">Apartment / Flat</SelectItem>
-                    <SelectItem value="villa">Independent Villa</SelectItem>
-                    <SelectItem value="studio">Studio</SelectItem>
-                    <SelectItem value="duplex">Duplex</SelectItem>
-                    <SelectItem value="penthouse">Penthouse</SelectItem>
-                    <SelectItem value="plot">Plot / Land</SelectItem>
-                    <SelectItem value="commercial">Commercial Space</SelectItem>
-                  </SelectContent>
-                </Select>
+              {/* Property Images Section */}
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-xs text-white/60 uppercase tracking-wider">Property Images</label>
+                  <span className="text-[10px] text-white/30">{propertyImages.length} / 5 labels</span>
+                </div>
+                
+                {/* Image Thumbnails Area */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {propertyImages.map((img, idx) => (
+                    <motion.div 
+                      layout
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      key={idx} 
+                      className="relative w-16 h-16 rounded-xl border border-white/10 overflow-hidden group"
+                    >
+                      <img src={img} alt="Property" className="w-full h-full object-cover" />
+                      <button 
+                        onClick={() => removeImage(idx)}
+                        className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-500 font-bold"
+                      >
+                        ✕
+                      </button>
+                    </motion.div>
+                  ))}
+                  
+                  {/* Upload Trigger Button */}
+                  {propertyImages.length < 5 && (
+                    <button 
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="w-16 h-16 rounded-xl border-2 border-dashed border-white/10 hover:border-primary/50 flex flex-col items-center justify-center transition-colors hover:bg-white/5"
+                    >
+                      {isUploading ? (
+                        <div className="w-4 h-4 border-2 border-primary border-t-transparent animate-spin rounded-full" />
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4 text-white/30" />
+                          <span className="text-[9px] text-white/30 mt-1 uppercase font-bold">Add</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+                <p className="text-[10px] text-white/30 italic">High-quality photos help attract 3x more buyers.</p>
               </div>
 
               {/* Location with geocoding */}
@@ -151,7 +227,7 @@ export default function SellerPage() {
                     className="bg-white/5 border-white/10 h-11 text-white placeholder:text-white/30 focus-visible:ring-primary/50 flex-1"
                     placeholder="Search locality, city..."
                   />
-                  <Button type="submit" size="sm" variant="outline" className="h-11 px-3 border-white/10">
+                  <Button type="submit" size="sm" variant="outline" className="h-11 px-3 border-white/10 hover:bg-primary/10">
                     <MapPin className="w-4 h-4" />
                   </Button>
                 </form>
@@ -239,8 +315,8 @@ export default function SellerPage() {
 
               {/* Description */}
               <div>
-                <label className="text-xs text-white/60 uppercase tracking-wider mb-1.5 block">Property Description</label>
-                <Textarea className="bg-white/5 border-white/10 min-h-[100px] text-white resize-none p-3 placeholder:text-white/30 focus-visible:ring-primary/50" placeholder="Describe amenities, floor, facing direction, parking etc..." />
+                <label className="text-xs text-white/60 uppercase tracking-wider mb-1.5 block">Description</label>
+                <Textarea className="bg-white/5 border-white/10 min-h-[80px] text-white resize-none p-3 placeholder:text-white/30 focus-visible:ring-primary/50" placeholder="Amenities, floor, facing direction etc..." />
               </div>
 
               <Button onClick={() => setStep("owner")} className="w-full h-11 mt-2 bg-primary hover:bg-primary/90 font-semibold rounded-xl">
@@ -256,6 +332,7 @@ export default function SellerPage() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className={`bg-gradient-to-br ${stepColors.owner} bg-black/40 backdrop-blur-2xl border border-white/10 p-7 rounded-3xl shadow-2xl relative mb-8`}
           >
+            {/* ... (Step 2 content same) */}
             <div className="absolute -bottom-8 -left-8 w-28 h-28 bg-emerald-500/20 rounded-full blur-3xl -z-10" />
 
             <div className="flex items-center gap-2 mb-4">
@@ -328,6 +405,7 @@ export default function SellerPage() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className={`bg-gradient-to-br ${stepColors.preview} bg-black/40 backdrop-blur-2xl border border-white/10 p-7 rounded-3xl shadow-2xl relative`}
           >
+            {/* ... (Step 3 content summarized with images) */}
             <div className="flex items-center gap-2 mb-4">
               <div className="p-2 bg-amber-500/20 rounded-xl"><CheckCircle2 className="w-5 h-5 text-amber-400" /></div>
               <div>
@@ -341,8 +419,15 @@ export default function SellerPage() {
               <div className="bg-white/5 rounded-2xl p-5 border border-white/10 space-y-3">
                 <div className="flex items-center gap-2 text-sm">
                   <Home className="w-4 h-4 text-primary" />
-                  <span className="text-white/60">Property pinned on map</span>
+                  <span className="text-white/60">Property location pinned</span>
                   <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] ml-auto shadow-none">✓ Set</Badge>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                   <Upload className="w-4 h-4 text-primary" />
+                   <span className="text-white/60">{propertyImages.length} images added</span>
+                   <Badge className={`${propertyImages.length > 0 ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"} text-[10px] ml-auto shadow-none`}>
+                     {propertyImages.length > 0 ? "✓" : "⚠️ Recommended"}
+                   </Badge>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <IndianRupee className="w-4 h-4 text-primary" />
@@ -354,15 +439,10 @@ export default function SellerPage() {
                   <span className="text-white/60">Owner contact added</span>
                   <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] ml-auto shadow-none">✓ Set</Badge>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Layers className="w-4 h-4 text-primary" />
-                  <span className="text-white/60">Smart Pricing will auto-adjust</span>
-                  <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[10px] ml-auto shadow-none">AI</Badge>
-                </div>
               </div>
 
               <p className="text-xs text-white/40 text-center">
-                Your listing will appear on CommuteBuddy and our smart pricing engine will recommend optimal pricing based on demand and commute analytics.
+                Your listing will appear on CommuteBuddy and our smart pricing engine will recommend optimal pricing based on demand.
               </p>
 
               <div className="flex gap-3">
