@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import Map, { Layer, Marker, NavigationControl, Popup, Source, type MapRef } from "react-map-gl/mapbox";
+import { useEffect, useMemo, useRef, useState, type RefObject, type FormEvent } from "react";
+import Map, { Layer, Marker, NavigationControl, Popup, Source, type MapRef, type MapLayerMouseEvent } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { createWorkplaceRadiusGeoJson } from "./mapRadius";
+import { useSearch, SPEED_FACTORS } from "@/context/SearchContext";
+import { Search, MapPin, Link2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 type Workplace = {
   label: string;
@@ -66,7 +69,7 @@ const getMapStyle = (mode: MapViewMode): any => {
 
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? "pk.placeholder";
 
-const CinematicZoomControls = ({ mapRef }: { mapRef: React.RefObject<MapRef> }) => {
+const CinematicZoomControls = ({ mapRef }: { mapRef: RefObject<MapRef> }) => {
 
   const handleZoom = (delta: number) => {
     if (!mapRef.current) {
@@ -167,7 +170,7 @@ export const PropertyMap = ({ workplace, properties, focusedPropertyId, toCurren
   };
 
   // Handle location search or link pasting
-  const handleLocationSubmit = async (e?: React.FormEvent) => {
+  const handleLocationSubmit = async (e?: FormEvent) => {
     e?.preventDefault();
     if (!locationInput.trim()) return;
 
