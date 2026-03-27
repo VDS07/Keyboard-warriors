@@ -10,6 +10,7 @@ const PropertyMap = lazy(() =>
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function SellerPage() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -20,98 +21,136 @@ export default function SellerPage() {
     offset: ["start start", "end end"]
   });
 
-  const mapWidth = useTransform(scrollYProgress, [0, 0.4], ["60vw", "350px"]);
-  const mapHeight = useTransform(scrollYProgress, [0, 0.4], ["85vh", "350px"]);
-  const mapRadius = useTransform(scrollYProgress, [0, 0.4], ["24px", "50%"]);
-  // Keep map somewhat centered on the left, but move it up slightly as circle
-  const mapY = useTransform(scrollYProgress, [0, 0.4], ["0vh", "-15vh"]);
+  // Map starts as large rectangle -> shrinks to circle on scroll
+  const mapWidth = useTransform(scrollYProgress, [0, 0.35], ["100%", "320px"]);
+  const mapHeight = useTransform(scrollYProgress, [0, 0.35], ["100%", "320px"]);
+  const mapRadius = useTransform(scrollYProgress, [0, 0.35], ["0px", "50%"]);
 
   return (
-    <div ref={containerRef} className="relative bg-zinc-950 text-white font-sans flex" style={{ height: "200vh" }}>
+    <div ref={containerRef} className="relative bg-zinc-950 text-white font-sans" style={{ height: "250vh" }}>
       
-      {/* Sticky Left Column for the Map */}
-      <div className="sticky top-0 h-screen w-1/2 flex items-center justify-center p-8 pointer-events-none z-20">
-        <motion.div 
-          className="relative overflow-hidden shadow-2xl pointer-events-auto border border-white/10 bg-black"
-          style={{
-            width: mapWidth,
-            height: mapHeight,
-            borderRadius: mapRadius,
-            y: mapY,
-          }}
-        >
-          <Suspense fallback={<div className="w-full h-full bg-zinc-900 animate-pulse"></div>}>
-            <PropertyMap 
-               workplace={{ label: "New York", lat: 40.7128, lng: -74.0060 }}
-               properties={[]}
-               focusedPropertyId={null}
-               toCurrency={(p) => `$${p}`}
-               onPropertyFocus={() => {}}
-            />
-          </Suspense>
-          <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.05)_25%,rgba(255,255,255,0.05)_50%,transparent_50%,transparent_75%,rgba(255,255,255,0.05)_75%,rgba(255,255,255,0.05)_100%)] bg-[length:40px_40px]"></div>
-        </motion.div>
-      </div>
-
-      {/* Scrolling Right Column for Forms */}
-      <div className="absolute top-0 right-0 w-full md:w-1/2 flex flex-col px-8 md:px-16 pt-[15vh] pb-[30vh] gap-[60vh] z-10">
+      {/* Sticky Layout: Map Left + Form Right */}
+      <div className="sticky top-0 h-screen flex overflow-hidden">
         
-        {/* Section 1: Property Info */}
-        <section className="bg-black/60 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl w-full shadow-2xl relative">
-          <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/20 rounded-full blur-3xl -z-10"></div>
-          
-          <h2 className="text-3xl font-light tracking-tight mb-2">Property Details</h2>
-          <p className="text-white/50 text-sm mb-8 uppercase tracking-widest">All your info of property</p>
-          
-          <form className="space-y-5 relative z-10">
-            <div>
-              <label className="text-xs text-white/60 uppercase tracking-wider mb-2 block">Location</label>
-              <Input className="bg-white/5 border-white/10 h-12 text-white placeholder:text-white/30 focus-visible:ring-primary/50" placeholder="Enter full address..." />
-            </div>
-            <div>
-              <label className="text-xs text-white/60 uppercase tracking-wider mb-2 block">Price</label>
-              <Input type="number" className="bg-white/5 border-white/10 h-12 text-white placeholder:text-white/30 focus-visible:ring-primary/50" placeholder="e.g. 25000" />
-            </div>
-            <div>
-              <label className="text-xs text-white/60 uppercase tracking-wider mb-2 block">Ownership Type</label>
-              <Input className="bg-white/5 border-white/10 h-12 text-white placeholder:text-white/30 focus-visible:ring-primary/50" placeholder="Freehold, Leasehold..." />
-            </div>
-          </form>
-        </section>
+        {/* Left: Interactive Map (animates from full to circle) */}
+        <div className="relative flex items-center justify-center w-1/2 p-8">
+          <motion.div 
+            className="relative overflow-hidden shadow-2xl border border-white/10 bg-black"
+            style={{
+              width: mapWidth,
+              height: mapHeight,
+              borderRadius: mapRadius,
+            }}
+          >
+            <Suspense fallback={<div className="w-full h-full bg-zinc-900 animate-pulse"></div>}>
+              <PropertyMap 
+                 workplace={{ label: "New York", lat: 40.7128, lng: -74.0060 }}
+                 properties={[]}
+                 focusedPropertyId={null}
+                 toCurrency={(p) => `$${p}`}
+                 onPropertyFocus={() => {}}
+              />
+            </Suspense>
+          </motion.div>
+        </div>
 
-        {/* Section 2: Owner Contact Info */}
-        <section className="bg-black/60 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl w-full shadow-2xl relative mt-32">
-          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-emerald-500/20 rounded-full blur-3xl -z-10"></div>
-          
-          <h2 className="text-3xl font-light tracking-tight mb-2">Owner's Contact Info</h2>
-          <p className="text-white/50 text-sm mb-8 uppercase tracking-widest">Identify Yourself</p>
-          
-          <form className="space-y-5 relative z-10" onSubmit={(e) => { e.preventDefault(); navigate('/owner'); }}>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs text-white/60 uppercase tracking-wider mb-2 block">Name</label>
-                <Input className="bg-white/5 border-white/10 h-12 text-white placeholder:text-white/30 focus-visible:ring-primary/50" placeholder="Full Name" />
-              </div>
-              <div>
-                <label className="text-xs text-white/60 uppercase tracking-wider mb-2 block">Phone No.</label>
-                <Input type="tel" className="bg-white/5 border-white/10 h-12 text-white placeholder:text-white/30 focus-visible:ring-primary/50" placeholder="+91..." />
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-white/60 uppercase tracking-wider mb-2 block">House Type</label>
-              <Input className="bg-white/5 border-white/10 h-12 text-white placeholder:text-white/30 focus-visible:ring-primary/50" placeholder="2BHK, Villa, Studio..." />
-            </div>
-            <div>
-              <label className="text-xs text-white/60 uppercase tracking-wider mb-2 block">Land Description</label>
-              <Textarea className="bg-white/5 border-white/10 min-h-[120px] text-white resize-none p-4 placeholder:text-white/30 focus-visible:ring-primary/50" placeholder="Describe the property's best features..." />
-            </div>
+        {/* Right: Scrolling Form Panel */}
+        <div className="w-1/2 overflow-y-auto h-screen px-8 py-12 scrollbar-hide">
+
+          {/* Section 1: Property Details */}
+          <motion.section 
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="bg-black/50 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl w-full shadow-2xl relative mb-10"
+          >
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/20 rounded-full blur-3xl -z-10"></div>
+
+            <h2 className="text-2xl font-light tracking-tight mb-1">Property Details</h2>
+            <p className="text-white/40 text-xs mb-6 uppercase tracking-widest">Fill in your property info</p>
             
-            <Button type="submit" className="w-full h-12 mt-4 text-lg bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl transition-all">
-              Submit & View Dashboard
-            </Button>
-          </form>
-        </section>
+            <form className="space-y-4">
+              <div>
+                <label className="text-xs text-white/60 uppercase tracking-wider mb-1.5 block">Location</label>
+                <Input className="bg-white/5 border-white/10 h-11 text-white placeholder:text-white/30 focus-visible:ring-primary/50" placeholder="Enter full address..." />
+              </div>
+              <div>
+                <label className="text-xs text-white/60 uppercase tracking-wider mb-1.5 block">Price</label>
+                <Input type="number" className="bg-white/5 border-white/10 h-11 text-white placeholder:text-white/30 focus-visible:ring-primary/50" placeholder="e.g. ₹25,000 / month" />
+              </div>
+              <div>
+                <label className="text-xs text-white/60 uppercase tracking-wider mb-1.5 block">Ownership</label>
+                <Select>
+                  <SelectTrigger className="bg-white/5 border-white/10 h-11 text-white focus:ring-primary/50">
+                    <SelectValue placeholder="Select type..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="freehold">Freehold</SelectItem>
+                    <SelectItem value="leasehold">Leasehold</SelectItem>
+                    <SelectItem value="coop">Co-operative</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-white/60 uppercase tracking-wider mb-1.5 block">Nearby Landmarks</label>
+                <Input className="bg-white/5 border-white/10 h-11 text-white placeholder:text-white/30 focus-visible:ring-primary/50" placeholder="Metro station, hospital..." />
+              </div>
+            </form>
+          </motion.section>
 
+          {/* Section 2: Owner's Contact Info */}
+          <motion.section 
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.6 }}
+            className="bg-black/50 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl w-full shadow-2xl relative"
+          >
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-emerald-500/20 rounded-full blur-3xl -z-10"></div>
+            
+            <h2 className="text-2xl font-light tracking-tight mb-1">Owner's Contact Info</h2>
+            <p className="text-white/40 text-xs mb-6 uppercase tracking-widest">How buyers can reach you</p>
+            
+            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); navigate('/owner'); }}>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-white/60 uppercase tracking-wider mb-1.5 block">Name</label>
+                  <Input className="bg-white/5 border-white/10 h-11 text-white placeholder:text-white/30 focus-visible:ring-primary/50" placeholder="Full Name" />
+                </div>
+                <div>
+                  <label className="text-xs text-white/60 uppercase tracking-wider mb-1.5 block">Phone No.</label>
+                  <Input type="tel" className="bg-white/5 border-white/10 h-11 text-white placeholder:text-white/30 focus-visible:ring-primary/50" placeholder="+91..." />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-white/60 uppercase tracking-wider mb-1.5 block">House Type</label>
+                <Select>
+                  <SelectTrigger className="bg-white/5 border-white/10 h-11 text-white focus:ring-primary/50">
+                    <SelectValue placeholder="Select type..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="studio">Studio</SelectItem>
+                    <SelectItem value="1bhk">1 BHK</SelectItem>
+                    <SelectItem value="2bhk">2 BHK</SelectItem>
+                    <SelectItem value="3bhk">3 BHK</SelectItem>
+                    <SelectItem value="villa">Villa</SelectItem>
+                    <SelectItem value="penthouse">Penthouse</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-white/60 uppercase tracking-wider mb-1.5 block">Land Description</label>
+                <Textarea className="bg-white/5 border-white/10 min-h-[100px] text-white resize-none p-3 placeholder:text-white/30 focus-visible:ring-primary/50" placeholder="Describe the property's best features..." />
+              </div>
+              
+              <Button type="submit" className="w-full h-12 mt-2 text-lg bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl transition-all active:scale-95 group relative overflow-hidden">
+                <span className="relative z-10">Submit & View Dashboard</span>
+                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform"></div>
+              </Button>
+            </form>
+          </motion.section>
+
+        </div>
       </div>
     </div>
   );
