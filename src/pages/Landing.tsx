@@ -21,7 +21,7 @@ export default function Landing() {
     setStep("zoomOut");
     setTimeout(() => {
       if (role === "buyer") navigate("/map");
-      if (role === "owner") navigate("/owner");
+      if (role === "owner") navigate("/seller");
     }, 600); // Wait for zoom out
   };
 
