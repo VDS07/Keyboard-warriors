@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PropertyCard } from "@/components/PropertyCard";
 import { PropertyDetailModal } from "@/components/PropertyDetailModal";
-import { useSearch, TransportMode, EnrichedProperty } from "@/context/SearchContext";
+import { useSearch, TransportMode, EnrichedProperty, Purpose } from "@/context/SearchContext";
 import { Car, Train, Bike, Footprints, BarChart3, MapPinned, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -34,6 +34,7 @@ const Index = () => {
     transportMode, setTransportMode,
     focusedPropertyId, setFocusedPropertyId,
     selectedPropertyId, setSelectedPropertyId,
+    purpose, setPurpose,
     filteredProperties,
   } = useSearch();
 
@@ -104,6 +105,22 @@ const Index = () => {
               <Icon className="w-4 h-4" />
             </button>
           ))}
+        </div>
+
+        <div className="w-px h-6 bg-border/50 hidden md:block" />
+
+        {/* Purpose */}
+        <div className="flex-1 min-w-[100px] hidden md:block">
+          <Select value={purpose} onValueChange={(v) => setPurpose(v as Purpose)}>
+            <SelectTrigger className="bg-transparent border-none shadow-none focus:ring-0 font-medium h-8 text-xs">
+              <SelectValue placeholder="Purpose" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="rent">🏠 Rent</SelectItem>
+              <SelectItem value="buy">🏡 Buy Property</SelectItem>
+              <SelectItem value="plot">📐 Buy Plot</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="w-px h-6 bg-border/50 hidden md:block" />

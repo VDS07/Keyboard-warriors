@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useMemo, ReactNode } from "react";
 
 export type TransportMode = "drive" | "transit" | "cycle" | "walk";
 export type UserRole = "buyer" | "owner" | null;
+export type Purpose = "rent" | "buy" | "plot";
 
 export type Property = {
   id: number;
@@ -37,6 +38,7 @@ type SearchState = {
   maxCommute: number;
   maxPrice: number;
   transportMode: TransportMode;
+  purpose: Purpose;
   userRole: UserRole;
   focusedPropertyId: number | null;
   selectedPropertyId: number | null;
@@ -47,6 +49,7 @@ type SearchContextType = SearchState & {
   setMaxCommute: (m: number) => void;
   setMaxPrice: (p: number) => void;
   setTransportMode: (t: TransportMode) => void;
+  setPurpose: (p: Purpose) => void;
   setUserRole: (r: UserRole) => void;
   setFocusedPropertyId: (id: number | null) => void;
   setSelectedPropertyId: (id: number | null) => void;
@@ -145,6 +148,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [maxCommute, setMaxCommute] = useState(45);
   const [maxPrice, setMaxPrice] = useState(100000);
   const [transportMode, setTransportMode] = useState<TransportMode>("transit");
+  const [purpose, setPurpose] = useState<Purpose>("rent");
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [focusedPropertyId, setFocusedPropertyId] = useState<number | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
@@ -172,6 +176,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         maxCommute, setMaxCommute,
         maxPrice, setMaxPrice,
         transportMode, setTransportMode,
+        purpose, setPurpose,
         userRole, setUserRole,
         focusedPropertyId, setFocusedPropertyId,
         selectedPropertyId, setSelectedPropertyId,
