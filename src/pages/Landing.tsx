@@ -28,19 +28,19 @@ export default function Landing() {
   return (
     <main className="relative w-screen h-screen overflow-hidden bg-zinc-950 text-white font-sans">
       
-      {/* Blurred Map Background */}
+      {/* Premium Background Image */}
       <div 
         className={`absolute inset-0 transition-all duration-1000 origin-center ${
-          step === "zoomOut" ? "blur-none opacity-100 scale-100" : "blur-xl opacity-30 scale-110"
+          step === "zoomOut" ? "blur-none opacity-100 scale-100" : "blur-sm opacity-50 scale-110"
         }`} 
         style={{
-          backgroundImage: "url('/placeholder.svg')", 
+          backgroundImage: "url('/assets/login-bg.jpg')", 
           backgroundSize: "cover",
           backgroundPosition: "center"
         }}
       >
-        {/* Slanting lines overlay */}
-        <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.03)_25%,rgba(255,255,255,0.03)_50%,transparent_50%,transparent_75%,rgba(255,255,255,0.03)_75%,rgba(255,255,255,0.03)_100%)] bg-[length:40px_40px]"></div>
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent" />
       </div>
 
       {/* 1. Login Screen */}
