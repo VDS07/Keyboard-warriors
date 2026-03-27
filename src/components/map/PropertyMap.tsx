@@ -27,15 +27,43 @@ type PropertyMapProps = {
   onPropertyFocus: (propertyId: number) => void;
 };
 
-const MAP_STYLES = {
-  normal: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-  satellite: "mapbox://styles/mapbox/satellite-streets-v12",
-  hd: "mapbox://styles/mapbox/outdoors-v12",
-} as const;
+// Free tile styles — no API key required
+const STYLE_NORMAL = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+const STYLE_HD = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
 
-type MapViewMode = keyof typeof MAP_STYLES;
+// ESRI World Imagery (free, no key needed) as a raster style
+const STYLE_SATELLITE: any = {
+  version: 8,
+  sources: {
+    "esri-satellite": {
+      type: "raster",
+      tiles: [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      ],
+      tileSize: 256,
+      attribution: "© Esri",
+    },
+  },
+  layers: [
+    {
+      id: "esri-satellite-layer",
+      type: "raster",
+      source: "esri-satellite",
+      minzoom: 0,
+      maxzoom: 19,
+    },
+  ],
+};
 
-const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? "pk.custom-style-token";
+type MapViewMode = "normal" | "satellite" | "hd";
+
+const getMapStyle = (mode: MapViewMode): any => {
+  if (mode === "satellite") return STYLE_SATELLITE;
+  if (mode === "hd") return STYLE_HD;
+  return STYLE_NORMAL;
+};
+
+const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? "pk.placeholder";
 
 const CinematicZoomControls = ({ mapRef }: { mapRef: React.RefObject<MapRef> }) => {
 
@@ -174,7 +202,7 @@ export const PropertyMap = ({ workplace, properties, focusedPropertyId, toCurren
       <Map
         ref={mapRef}
         initialViewState={{ latitude: workplace.lat, longitude: workplace.lng, zoom: 13.4 }}
-        mapStyle={MAP_STYLES[mapViewMode]}
+        mapStyle={getMapStyle(mapViewMode)}
         mapboxAccessToken={MAPBOX_ACCESS_TOKEN}
         scrollZoom
         dragRotate={false}

@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PropertyCard } from "@/components/PropertyCard";
 import { PropertyDetailModal } from "@/components/PropertyDetailModal";
 import { useSearch, TransportMode, EnrichedProperty, Purpose } from "@/context/SearchContext";
-import { Car, Train, Bike, Footprints, BarChart3, MapPinned, X } from "lucide-react";
+import { Car, Train, Bike, Footprints, BarChart3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const PropertyMap = lazy(() =>
@@ -41,7 +41,6 @@ const Index = () => {
   const [workplaceInput, setWorkplaceInput] = useState(workplace.label);
   const [isSearching, setIsSearching] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [streetViewOpen, setStreetViewOpen] = useState(false);
 
   const selectedProperty = filteredProperties.find(p => p.id === selectedPropertyId) || null;
 
@@ -219,40 +218,8 @@ const Index = () => {
         onClose={() => setSelectedPropertyId(null)}
       />
 
-      {/* Street View Toggle Button */}
-      <button
-        onClick={() => setStreetViewOpen(!streetViewOpen)}
-        className={`absolute bottom-16 left-4 z-[400] p-3 rounded-full shadow-lg border transition-all ${
-          streetViewOpen ? "bg-primary text-white border-primary" : "bg-background/90 text-foreground border-border/50 hover:bg-primary/10"
-        } backdrop-blur-sm`}
-        title="Toggle Street View"
-      >
-        <MapPinned className="w-5 h-5" />
-      </button>
-
-      {/* Street View Panel */}
-      {streetViewOpen && (
-        <div className="absolute bottom-0 left-0 right-0 z-[450] h-[45vh] bg-zinc-950 border-t border-white/10 animate-fade-in-up">
-          <div className="flex items-center justify-between px-4 py-2 bg-zinc-900/90 backdrop-blur-sm border-b border-white/10">
-            <span className="text-sm font-semibold text-white/80">🗺️ Google Street View</span>
-            <button onClick={() => setStreetViewOpen(false)} className="p-1 hover:bg-white/10 rounded">
-              <X className="w-4 h-4 text-white/60" />
-            </button>
-          </div>
-          <iframe
-            className="w-full h-[calc(100%-40px)]"
-            src={`https://www.google.com/maps/embed?pb=!4v0!6m8!1m7!1s!2m2!1d${focusedPropertyId ? (filteredProperties.find(p => p.id === focusedPropertyId)?.lat || workplace.lat) : workplace.lat}!2d${focusedPropertyId ? (filteredProperties.find(p => p.id === focusedPropertyId)?.lng || workplace.lng) : workplace.lng}!3f0!4f0!5f0.7820865974627469&q=${focusedPropertyId ? (filteredProperties.find(p => p.id === focusedPropertyId)?.lat || workplace.lat) : workplace.lat},${focusedPropertyId ? (filteredProperties.find(p => p.id === focusedPropertyId)?.lng || workplace.lng) : workplace.lng}`}
-            style={{ border: 0 }}
-            allowFullScreen
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            title="Street View"
-          />
-        </div>
-      )}
-
       {/* Bottom Counter */}
-      <div className={`absolute ${streetViewOpen ? "bottom-[45vh]" : "bottom-4"} left-1/2 -translate-x-1/2 bg-background/90 px-4 py-2 rounded-full shadow-lg border border-border/50 backdrop-blur-sm z-[400] text-sm font-medium flex items-center gap-2 transition-all`}>
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/90 px-4 py-2 rounded-full shadow-lg border border-border/50 backdrop-blur-sm z-[400] text-sm font-medium flex items-center gap-2">
         Showing {filteredProperties.length} properties via
         <Badge variant="outline" className="capitalize text-xs">{transportMode}</Badge>
       </div>
