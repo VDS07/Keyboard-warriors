@@ -83,6 +83,16 @@ export function PropertyDetailModal({ property, open, onClose }: Props) {
             <Badge variant="outline" className="border-white/10 text-white/80 capitalize">{property.type}</Badge>
           </div>
 
+          {/* Street View Link */}
+          <a
+            href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${property.lat},${property.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-sm font-medium"
+          >
+            🗺️ Open Street View on Google Maps
+          </a>
+
           {/* Description */}
           <p className="text-sm text-white/60 leading-relaxed">{property.description}</p>
         </div>
