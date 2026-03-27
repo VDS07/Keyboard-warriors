@@ -27,7 +27,14 @@ type PropertyMapProps = {
   onPropertyFocus: (propertyId: number) => void;
 };
 
-const MAPBOX_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+const MAP_STYLES = {
+  normal: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+  satellite: "mapbox://styles/mapbox/satellite-streets-v12",
+  hd: "mapbox://styles/mapbox/outdoors-v12",
+} as const;
+
+type MapViewMode = keyof typeof MAP_STYLES;
+
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? "pk.custom-style-token";
 
 const CinematicZoomControls = ({ mapRef }: { mapRef: React.RefObject<MapRef> }) => {
@@ -68,10 +75,37 @@ const CinematicZoomControls = ({ mapRef }: { mapRef: React.RefObject<MapRef> }) 
   );
 };
 
+const MapStyleToggle = ({ mode, onChange }: { mode: MapViewMode; onChange: (m: MapViewMode) => void }) => {
+  const modes: { key: MapViewMode; label: string; emoji: string }[] = [
+    { key: "normal", label: "Dark", emoji: "🌙" },
+    { key: "satellite", label: "Satellite", emoji: "🛰️" },
+    { key: "hd", label: "HD", emoji: "🏔️" },
+  ];
+
+  return (
+    <div className="pointer-events-auto absolute bottom-5 left-5 z-[600] flex rounded-full bg-black/70 backdrop-blur-xl border border-white/15 shadow-2xl overflow-hidden">
+      {modes.map(({ key, label, emoji }) => (
+        <button
+          key={key}
+          onClick={() => onChange(key)}
+          className={`px-3 py-2 text-xs font-semibold transition-all ${
+            mode === key
+              ? "bg-white/15 text-white"
+              : "text-white/50 hover:text-white/80 hover:bg-white/5"
+          }`}
+        >
+          {emoji} {label}
+        </button>
+      ))}
+    </div>
+  );
+};
+
 export const PropertyMap = ({ workplace, properties, focusedPropertyId, toCurrency, onPropertyFocus }: PropertyMapProps) => {
   const mapRef = useRef<MapRef>(null);
   const zoomTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [popupPropertyId, setPopupPropertyId] = useState<number | null>(null);
+  const [mapViewMode, setMapViewMode] = useState<MapViewMode>("normal");
   const focusedProperty = properties.find((property) => property.id === focusedPropertyId);
   const maxCommuteDistanceKm = useMemo(
     () => (properties.length ? Math.max(...properties.map((property) => property.distanceKm)) : 0),
@@ -140,7 +174,7 @@ export const PropertyMap = ({ workplace, properties, focusedPropertyId, toCurren
       <Map
         ref={mapRef}
         initialViewState={{ latitude: workplace.lat, longitude: workplace.lng, zoom: 13.4 }}
-        mapStyle={MAPBOX_STYLE}
+        mapStyle={MAP_STYLES[mapViewMode]}
         mapboxAccessToken={MAPBOX_ACCESS_TOKEN}
         scrollZoom
         dragRotate={false}
@@ -255,6 +289,7 @@ export const PropertyMap = ({ workplace, properties, focusedPropertyId, toCurren
       </Map>
 
       <CinematicZoomControls mapRef={mapRef} />
+      <MapStyleToggle mode={mapViewMode} onChange={setMapViewMode} />
     </div>
   );
 };
