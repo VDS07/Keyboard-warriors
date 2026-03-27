@@ -9,6 +9,7 @@ import Index from "./pages/Index.tsx";
 import OwnerDashboard from "./pages/OwnerDashboard.tsx";
 import SellerPage from "./pages/SellerPage.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import LoginPage from "./pages/LoginPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<LoginPage />} />
             <Route path="/map" element={<Index />} />
             <Route path="/owner" element={<OwnerDashboard />} />
             <Route path="/seller" element={<SellerPage />} />

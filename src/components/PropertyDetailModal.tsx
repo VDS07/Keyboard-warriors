@@ -1,7 +1,7 @@
 import { EnrichedProperty } from "@/context/SearchContext";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { MapPin, Bed, Bath, Ruler, PawPrint, Sofa, Star } from "lucide-react";
+import { MapPin, Bed, Bath, Ruler, PawPrint, Sofa, Star, User, Phone } from "lucide-react";
 
 type Props = {
   property: EnrichedProperty | null;
@@ -85,6 +85,42 @@ export function PropertyDetailModal({ property, open, onClose }: Props) {
 
           {/* Description */}
           <p className="text-sm text-white/60 leading-relaxed">{property.description}</p>
+
+          {/* Contact Owner Section */}
+          {(property.contactName || property.contactPhone || property.contactEmail) && (
+            <div className="mt-6 pt-6 border-t border-white/10 space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-primary/10 rounded-lg">
+                  <User className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-white/40 uppercase tracking-widest leading-none mb-1">Listed by Owner</p>
+                  <p className="text-sm font-bold text-white leading-none">{property.contactName || "Verified Owner"}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {property.contactPhone && (
+                  <a 
+                    href={`tel:${property.contactPhone}`}
+                    className="flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
+                  >
+                    <Phone className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+                    <span className="text-xs font-medium text-white/80">{property.contactPhone}</span>
+                  </a>
+                )}
+                {property.contactEmail && (
+                  <a 
+                    href={`mailto:${property.contactEmail}`}
+                    className="flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
+                  >
+                    <Star className="w-4 h-4 text-primary group-hover:scale-110 transition-transform" />
+                    <span className="text-xs font-medium text-white/80 truncate">Email Owner</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

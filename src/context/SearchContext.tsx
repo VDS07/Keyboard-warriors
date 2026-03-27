@@ -20,6 +20,9 @@ export type Property = {
   furnished: "furnished" | "semi-furnished" | "unfurnished";
   description: string;
   city: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
 };
 
 export type EnrichedProperty = Property & {
@@ -53,6 +56,7 @@ type SearchContextType = SearchState & {
   setUserRole: (r: UserRole) => void;
   setFocusedPropertyId: (id: number | null) => void;
   setSelectedPropertyId: (id: number | null) => void;
+  registerProperty: (p: Omit<Property, "id">) => void;
   properties: EnrichedProperty[];
   filteredProperties: EnrichedProperty[];
 };
@@ -150,11 +154,13 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [transportMode, setTransportMode] = useState<TransportMode>("transit");
   const [purpose, setPurpose] = useState<Purpose>("rent");
   const [userRole, setUserRole] = useState<UserRole>(null);
+  const [ownerProperties, setOwnerProperties] = useState<Property[]>([]);
   const [focusedPropertyId, setFocusedPropertyId] = useState<number | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
 
   const properties: EnrichedProperty[] = useMemo(() => {
-    return PROPERTY_LIST.map((property) => {
+    const combinedList = [...PROPERTY_LIST, ...ownerProperties];
+    return combinedList.map((property) => {
       const distanceKm = getDistanceKm(workplace.lat, workplace.lng, property.lat, property.lng);
       return {
         ...property,
@@ -162,7 +168,13 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         commuteMinutes: estimateCommuteMinutes(distanceKm, transportMode),
       };
     }).sort((a, b) => a.commuteMinutes - b.commuteMinutes);
-  }, [workplace, transportMode]);
+  }, [workplace, transportMode, ownerProperties]);
+
+  const registerProperty = (p: Omit<Property, "id">) => {
+    const allPropertyIds = [...PROPERTY_LIST.map(pl => pl.id), ...ownerProperties.map(op => op.id)];
+    const newId = allPropertyIds.length > 0 ? Math.max(...allPropertyIds) + 1 : 1;
+    setOwnerProperties(prev => [...prev, { ...p, id: newId } as Property]);
+  };
 
   const filteredProperties = useMemo(
     () => properties.filter((p) => p.commuteMinutes <= maxCommute && p.price <= maxPrice),
@@ -180,6 +192,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         userRole, setUserRole,
         focusedPropertyId, setFocusedPropertyId,
         selectedPropertyId, setSelectedPropertyId,
+        registerProperty,
         properties,
         filteredProperties,
       }}
