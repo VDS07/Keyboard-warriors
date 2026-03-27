@@ -64,7 +64,7 @@ const DEFAULT_WORKPLACE: Workplace = {
 };
 
 // Speed multipliers (km per minute) for different transport modes
-const SPEED_FACTORS: Record<TransportMode, number> = {
+export const SPEED_FACTORS: Record<TransportMode, number> = {
   drive: 0.55,
   transit: 0.35,
   cycle: 0.22,

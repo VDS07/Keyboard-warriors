@@ -131,27 +131,72 @@ const MapStyleToggle = ({ mode, onChange }: { mode: MapViewMode; onChange: (m: M
 };
 
 export const PropertyMap = ({ workplace, properties, focusedPropertyId, toCurrency, onPropertyFocus, hideControls = false }: PropertyMapProps) => {
+  const { setWorkplace, maxCommute, transportMode } = useSearch();
   const mapRef = useRef<MapRef>(null);
   const zoomTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [popupPropertyId, setPopupPropertyId] = useState<number | null>(null);
   const [mapViewMode, setMapViewMode] = useState<MapViewMode>("normal");
+  const [locationInput, setLocationInput] = useState("");
+  
   const focusedProperty = properties.find((property) => property.id === focusedPropertyId);
-  const maxCommuteDistanceKm = useMemo(
-    () => (properties.length ? Math.max(...properties.map((property) => property.distanceKm)) : 0),
-    [properties],
-  );
-  const workplaceRadiusGeoJson = useMemo(
-    () => createWorkplaceRadiusGeoJson(workplace, maxCommuteDistanceKm),
-    [workplace, maxCommuteDistanceKm],
-  );
-  const workplaceAuraColor = useMemo(() => {
-    if (typeof window === "undefined") {
-      return "hsl(258 84% 66%)";
-    }
 
+  // Calculate radius based on time radius: Max Commute * Speed constant
+  const timeRadiusKm = useMemo(() => {
+    return maxCommute * (SPEED_FACTORS[transportMode] || 0.35);
+  }, [maxCommute, transportMode]);
+
+  const workplaceRadiusGeoJson = useMemo(
+    () => createWorkplaceRadiusGeoJson(workplace, timeRadiusKm),
+    [workplace, timeRadiusKm],
+  );
+
+  const workplaceAuraColor = useMemo(() => {
+    if (typeof window === "undefined") return "hsl(258 84% 66%)";
     const accentToken = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
     return accentToken ? `hsl(${accentToken})` : "hsl(258 84% 66%)";
   }, []);
+
+  // Handle map click to set workplace
+  const handleMapClick = (e: MapLayerMouseEvent) => {
+    const { lng, lat } = e.lngLat;
+    setWorkplace({
+      label: "Selected Location",
+      lat,
+      lng,
+    });
+  };
+
+  // Handle location search or link pasting
+  const handleLocationSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!locationInput.trim()) return;
+
+    // Try to parse Google Maps link for coordinates
+    const coordMatch = locationInput.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (coordMatch) {
+      const lat = parseFloat(coordMatch[1]);
+      const lng = parseFloat(coordMatch[2]);
+      setWorkplace({ label: "Location from Link", lat, lng });
+      setLocationInput("");
+      return;
+    }
+
+    // Fallback to geocoding (OpenStreetMap Nominatim)
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationInput)}&limit=1`);
+      const data = await res.json();
+      if (data && data[0]) {
+        setWorkplace({
+          label: data[0].display_name.split(',')[0],
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon),
+        });
+        setLocationInput("");
+      }
+    } catch (err) {
+      console.error("Geocoding error", err);
+    }
+  };
 
   useEffect(() => {
     if (!mapRef.current) {
@@ -199,7 +244,34 @@ export const PropertyMap = ({ workplace, properties, focusedPropertyId, toCurren
   }, [focusedProperty]);
 
   return (
-    <div className="map-dark-theme relative h-full w-full">
+    <div className="map-dark-theme relative h-full w-full group/map">
+      {/* Floating Workplace Search Bar */}
+      {!hideControls && (
+        <div className="absolute top-5 left-1/2 -translate-x-1/2 z-[600] w-[90%] max-w-md">
+          <form onSubmit={handleLocationSubmit} className="relative group/search">
+            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-white/40 group-focus-within/search:text-primary transition-colors">
+              <Search className="w-4 h-4" />
+            </div>
+            <Input
+              value={locationInput}
+              onChange={(e) => setLocationInput(e.target.value)}
+              placeholder="Enter workplace or paste Google Maps link..."
+              className="w-full bg-black/40 backdrop-blur-2xl border-white/10 hover:border-white/20 focus:border-primary/50 pl-12 pr-12 h-12 rounded-2xl text-sm shadow-2xl transition-all"
+            />
+            <div className="absolute inset-y-0 right-3 flex items-center gap-1">
+               <div className="bg-white/5 p-1.5 rounded-lg border border-white/10 text-white/30" title="Paste Map Link">
+                 <Link2 className="w-4 h-4" />
+               </div>
+            </div>
+          </form>
+          <div className="mt-2 text-center">
+            <span className="text-[10px] text-white/30 uppercase tracking-widest font-bold bg-black/20 px-3 py-1 rounded-full border border-white/5 backdrop-blur-sm">
+              Tip: You can also click anywhere on the map to set workplace
+            </span>
+          </div>
+        </div>
+      )}
+
       <Map
         ref={mapRef}
         initialViewState={{ latitude: workplace.lat, longitude: workplace.lng, zoom: 13.4 }}
@@ -210,11 +282,13 @@ export const PropertyMap = ({ workplace, properties, focusedPropertyId, toCurren
         touchPitch={false}
         attributionControl={false}
         style={{ width: "100%", height: "100%" }}
+        onClick={handleMapClick}
       >
         <NavigationControl position="bottom-right" showCompass={false} />
 
         {workplaceRadiusGeoJson && (
           <Source id="workplace-commute-radius" type="geojson" data={workplaceRadiusGeoJson}>
+            {/* The outer aura / glow */}
             <Layer
               id="workplace-commute-radius-fill"
               type="fill"
@@ -224,35 +298,53 @@ export const PropertyMap = ({ workplace, properties, focusedPropertyId, toCurren
                   "interpolate",
                   ["linear"],
                   ["zoom"],
-                  10,
-                  0.26,
-                  13.4,
-                  0.4,
-                  17,
-                  0.22,
+                  10, 0.15,
+                  13.4, 0.25,
+                  17, 0.1
                 ],
               }}
             />
+            {/* Soft blurred edge for the 'aura' effect */}
             <Layer
               id="workplace-commute-radius-outline"
               type="line"
               paint={{
                 "line-color": workplaceAuraColor,
-                "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1.2, 13.4, 2, 17, 3.2],
-                "line-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0.35, 13.4, 0.55, 17, 0.7],
-                "line-blur": ["interpolate", ["linear"], ["zoom"], 10, 1.8, 13.4, 1, 17, 0.4],
+                "line-width": ["interpolate", ["linear"], ["zoom"], 10, 20, 13.4, 40, 17, 60],
+                "line-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0.2, 13.4, 0.3, 17, 0.1],
+                "line-blur": ["interpolate", ["linear"], ["zoom"], 10, 10, 13.4, 20, 17, 30],
+              }}
+            />
+            {/* Inner sharper ring */}
+            <Layer
+              id="workplace-commute-radius-ring"
+              type="line"
+              paint={{
+                "line-color": workplaceAuraColor,
+                "line-width": 2,
+                "line-opacity": 0.5,
               }}
             />
           </Source>
         )}
 
+        {/* Workplace Marker with Custom Pulsing Aura */}
         <Marker longitude={workplace.lng} latitude={workplace.lat} anchor="center">
-          <button
-            type="button"
-            onClick={() => setPopupPropertyId(-1)}
-            className="h-4 w-4 rounded-full border-2 border-accent bg-accent shadow-[0_0_0_6px_hsl(var(--accent)/0.25)]"
-            aria-label="Workplace marker"
-          />
+          <div className="relative flex items-center justify-center">
+            {/* Pulsing ring 1 */}
+            <div className="absolute w-12 h-12 bg-accent/20 rounded-full animate-ping duration-[3000ms]" />
+            {/* Pulsing ring 2 */}
+            <div className="absolute w-8 h-8 bg-accent/30 rounded-full animate-pulse decoration-3000ms" />
+            
+            <button
+              type="button"
+              onClick={() => setPopupPropertyId(-1)}
+              className="relative z-10 h-5 w-5 rounded-full border-2 border-white bg-accent shadow-[0_0_20px_rgba(168,85,247,0.5)] transition-transform hover:scale-125"
+              aria-label="Workplace marker"
+            >
+              <MapPin className="w-3 h-3 text-white mx-auto" />
+            </button>
+          </div>
         </Marker>
 
         {properties.map((property) => (
@@ -263,7 +355,7 @@ export const PropertyMap = ({ workplace, properties, focusedPropertyId, toCurren
                 onPropertyFocus(property.id);
                 setPopupPropertyId(property.id);
               }}
-              className="rounded-full border border-primary/90 bg-primary/85 transition-transform duration-200 hover:scale-110"
+              className="rounded-full border border-primary/90 bg-primary/85 transition-transform duration-200 hover:scale-110 shadow-lg"
               style={{
                 width: focusedPropertyId === property.id ? "18px" : "14px",
                 height: focusedPropertyId === property.id ? "18px" : "14px",
