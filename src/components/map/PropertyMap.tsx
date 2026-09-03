@@ -132,7 +132,18 @@ export const PropertyMap = ({
 
     mapRef.current = map;
 
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+
+    const handleResize = () => {
+      map.invalidateSize();
+    };
+    window.addEventListener("resize", handleResize);
+
     return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", handleResize);
       map.remove();
       mapRef.current = null;
     };
@@ -191,16 +202,15 @@ export const PropertyMap = ({
     }).addTo(group);
     radiusCircleRef.current = circle;
 
-    // 2. Workplace Marker (Pulsing HTML DivIcon)
     const workplaceIconHtml = `
       <div class="relative flex items-center justify-center pointer-events-auto">
         <div class="absolute -inset-3 bg-purple-500/30 rounded-full animate-ping"></div>
         <div class="absolute -inset-1.5 bg-purple-600/40 rounded-full animate-pulse"></div>
         <div class="relative h-8 w-8 rounded-full border-2 border-white bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.9)] transition-transform hover:scale-125 cursor-pointer">
-          ${renderWorkplaceIconSvg(workplaceIconIcon)}
+          ${renderWorkplaceIconSvg(workplaceIcon)}
         </div>
       </div>
-    `.replace("workplaceIconIcon", workplaceIcon);
+    `;
 
     const wpIcon = L.divIcon({
       html: workplaceIconHtml,
