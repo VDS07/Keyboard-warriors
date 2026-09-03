@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type RefObject, type FormEvent } from "react";
+import React, { Component, useEffect, useMemo, useRef, useState, type RefObject, type ReactNode } from "react";
 import Map, { Layer, Marker, NavigationControl, Popup, Source, type MapRef, type MapLayerMouseEvent } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { createWorkplaceRadiusGeoJson } from "./mapRadius";
 import { useSearch, SPEED_FACTORS, WorkplaceIcon } from "@/context/SearchContext";
 import { Search, MapPin, Building2, GraduationCap, Stethoscope, Briefcase, Navigation } from "lucide-react";
-import { Input } from "@/components/ui/input";
 
 type Workplace = {
   label: string;
@@ -31,11 +30,59 @@ type PropertyMapProps = {
   hideControls?: boolean;
 };
 
-// Free tile styles — no API key required
-const STYLE_NORMAL = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
-const STYLE_HD = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
+// Extremely reliable, fast retina raster styles — 0 external vector font/sprite network errors
+const STYLE_NORMAL: any = {
+  version: 8,
+  sources: {
+    "carto-dark": {
+      type: "raster",
+      tiles: [
+        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+        "https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+      ],
+      tileSize: 256,
+      attribution: "© CARTO, © OpenStreetMap contributors",
+    },
+  },
+  layers: [
+    {
+      id: "carto-dark-layer",
+      type: "raster",
+      source: "carto-dark",
+      minzoom: 0,
+      maxzoom: 19,
+    },
+  ],
+};
 
-// ESRI World Imagery (free, no key needed) as a raster style
+const STYLE_HD: any = {
+  version: 8,
+  sources: {
+    "carto-voyager": {
+      type: "raster",
+      tiles: [
+        "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+        "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+        "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+        "https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+      ],
+      tileSize: 256,
+      attribution: "© CARTO, © OpenStreetMap contributors",
+    },
+  },
+  layers: [
+    {
+      id: "carto-voyager-layer",
+      type: "raster",
+      source: "carto-voyager",
+      minzoom: 0,
+      maxzoom: 19,
+    },
+  ],
+};
+
 const STYLE_SATELLITE: any = {
   version: 8,
   sources: {
@@ -78,19 +125,21 @@ const renderWorkplaceIcon = (icon: WorkplaceIcon) => {
 };
 
 const CinematicZoomControls = ({ mapRef }: { mapRef: RefObject<MapRef> }) => {
-
   const handleZoom = (delta: number) => {
-    if (!mapRef.current) {
-      return;
+    try {
+      const map = mapRef.current?.getMap();
+      if (!map) return;
+      const currentZoom = typeof map.getZoom === "function" ? map.getZoom() : 13.4;
+      const nextZoom = Math.min(18, Math.max(10, currentZoom + delta));
+      map.flyTo({
+        center: map.getCenter(),
+        zoom: nextZoom,
+        duration: 0.8,
+        essential: true,
+      });
+    } catch (err) {
+      console.warn("Zoom error:", err);
     }
-
-    const nextZoom = Math.min(18, Math.max(10, mapRef.current.getZoom() + delta));
-    mapRef.current.flyTo({
-      center: mapRef.current.getCenter(),
-      zoom: nextZoom,
-      duration: 0.8,
-      essential: true,
-    });
   };
 
   return (
@@ -141,7 +190,53 @@ const MapStyleToggle = ({ mode, onChange }: { mode: MapViewMode; onChange: (m: M
   );
 };
 
-export const PropertyMap = ({ workplace, properties, focusedPropertyId, toCurrency, onPropertyFocus, hideControls = false }: PropertyMapProps) => {
+type ErrorBoundaryProps = {
+  children: ReactNode;
+};
+
+type ErrorBoundaryState = {
+  hasError: boolean;
+};
+
+class MapErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error("MapErrorBoundary caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex h-full w-full flex-col items-center justify-center bg-zinc-950 p-6 text-center text-white">
+          <div className="rounded-2xl border border-purple-500/30 bg-purple-950/20 p-6 backdrop-blur-xl max-w-md">
+            <h3 className="text-lg font-bold text-purple-300">🗺️ Map View Loading</h3>
+            <p className="mt-2 text-xs text-zinc-400">
+              Map instance encountered a canvas refresh. Click below to reload interactive map.
+            </p>
+            <button
+              onClick={() => this.setState({ hasError: false })}
+              className="mt-4 rounded-full bg-purple-600 px-4 py-2 text-xs font-semibold text-white hover:bg-purple-500"
+            >
+              Reload Map
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+const BasePropertyMap = ({ workplace, properties, focusedPropertyId, toCurrency, onPropertyFocus, hideControls = false }: PropertyMapProps) => {
   const { setWorkplace, maxCommute, transportMode, workplaceIcon } = useSearch();
   const mapRef = useRef<MapRef>(null);
   const zoomTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -207,29 +302,34 @@ export const PropertyMap = ({ workplace, properties, focusedPropertyId, toCurren
   };
 
   useEffect(() => {
-    if (!mapRef.current) {
-      return;
-    }
+    try {
+      const map = mapRef.current?.getMap();
+      if (!map) return;
 
-    if (zoomTimeout.current) {
-      clearTimeout(zoomTimeout.current);
-    }
+      if (zoomTimeout.current) {
+        clearTimeout(zoomTimeout.current);
+      }
 
-    mapRef.current.flyTo({
-      center: [workplace.lng, workplace.lat],
-      zoom: Math.max(10, mapRef.current.getZoom() - 1.5),
-      duration: 900,
-      essential: true,
-    });
-
-    zoomTimeout.current = setTimeout(() => {
-      mapRef.current?.flyTo({
+      map.flyTo({
         center: [workplace.lng, workplace.lat],
-        zoom: 13.4,
-        duration: 1450,
+        zoom: Math.max(10, (map.getZoom?.() ?? 13.4) - 1.5),
+        duration: 900,
         essential: true,
       });
-    }, 540);
+
+      zoomTimeout.current = setTimeout(() => {
+        try {
+          map.flyTo({
+            center: [workplace.lng, workplace.lat],
+            zoom: 13.4,
+            duration: 1450,
+            essential: true,
+          });
+        } catch {}
+      }, 540);
+    } catch (err) {
+      console.warn("Map Workplace flyTo warning:", err);
+    }
 
     return () => {
       if (zoomTimeout.current) {
@@ -239,16 +339,19 @@ export const PropertyMap = ({ workplace, properties, focusedPropertyId, toCurren
   }, [workplace]);
 
   useEffect(() => {
-    if (!mapRef.current || !focusedProperty) {
-      return;
-    }
+    try {
+      const map = mapRef.current?.getMap();
+      if (!map || !focusedProperty) return;
 
-    mapRef.current.flyTo({
-      center: [focusedProperty.lng, focusedProperty.lat],
-      zoom: 14.9,
-      duration: 1100,
-      essential: true,
-    });
+      map.flyTo({
+        center: [focusedProperty.lng, focusedProperty.lat],
+        zoom: 14.9,
+        duration: 1100,
+        essential: true,
+      });
+    } catch (err) {
+      console.warn("Map FocusedProperty flyTo warning:", err);
+    }
   }, [focusedProperty]);
 
   return (
@@ -436,3 +539,9 @@ export const PropertyMap = ({ workplace, properties, focusedPropertyId, toCurren
     </div>
   );
 };
+
+export const PropertyMap = (props: PropertyMapProps) => (
+  <MapErrorBoundary>
+    <BasePropertyMap {...props} />
+  </MapErrorBoundary>
+);
