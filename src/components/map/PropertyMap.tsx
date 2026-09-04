@@ -29,18 +29,27 @@ type PropertyMapProps = {
   hideControls?: boolean;
 };
 
-type MapViewMode = "normal" | "satellite" | "hd";
+export type MapViewMode = "normal" | "openmaps" | "satellite" | "hd";
 
-// High-performance, gorgeous free tile endpoints (0 API keys required)
-const TILE_SERVERS = {
+const CARTO_API_KEY = (import.meta.env.VITE_CARTO_API_KEY as string) || "cb1_2w7k_1_41073939576e71e4cdbd81fb";
+const cartoParam = CARTO_API_KEY ? `?api_key=${CARTO_API_KEY}` : "";
+
+// Map tile endpoints including CARTO with API key and OpenStreetMap (Open Maps)
+const TILE_SERVERS: Record<MapViewMode, { url: string; attribution: string; subdomains: string; maxZoom: number }> = {
   normal: {
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    url: `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png${cartoParam}`,
     attribution: "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors &copy; <a href='https://carto.com/attributions'>CARTO</a>",
     subdomains: "abcd",
     maxZoom: 19,
   },
+  openmaps: {
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors",
+    subdomains: "abc",
+    maxZoom: 19,
+  },
   hd: {
-    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+    url: `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png${cartoParam}`,
     attribution: "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors &copy; <a href='https://carto.com/attributions'>CARTO</a>",
     subdomains: "abcd",
     maxZoom: 19,
@@ -372,9 +381,10 @@ export const PropertyMap = ({
           {/* Map Style Toggle */}
           <div className="pointer-events-auto absolute bottom-5 left-5 z-[600] flex rounded-full bg-black/80 backdrop-blur-xl border border-white/20 shadow-2xl overflow-hidden p-0.5">
             {[
-              { key: "normal" as MapViewMode, label: "Dark", emoji: "🌙" },
+              { key: "normal" as MapViewMode, label: "Dark (Carto)", emoji: "🌙" },
+              { key: "openmaps" as MapViewMode, label: "Open Maps", emoji: "🗺️" },
+              { key: "hd" as MapViewMode, label: "Voyager (Carto)", emoji: "🏙️" },
               { key: "satellite" as MapViewMode, label: "Satellite", emoji: "🛰️" },
-              { key: "hd" as MapViewMode, label: "HD", emoji: "🏔️" },
             ].map(({ key, label, emoji }) => (
               <button
                 key={key}
