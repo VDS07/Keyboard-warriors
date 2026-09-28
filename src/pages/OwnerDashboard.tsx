@@ -146,7 +146,7 @@ export default function OwnerDashboard() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-3xl font-extrabold tracking-tight text-white">
-                Owner Control Center (Section XV)
+                Owner Control Center
               </h1>
               <Badge className="bg-purple-600/30 text-purple-300 border-purple-500/40 text-xs px-2.5 py-0.5">
                 Two-Sided Marketplace
@@ -228,7 +228,7 @@ export default function OwnerDashboard() {
           </div>
         )}
 
-        {/* Section XVI-A: Commute Discovery Distribution & Smart Pricing */}
+        {/* Commute Discovery Distribution & Smart Pricing */}
         {selectedPropertyForAnalysis && (
           <div className="grid lg:grid-cols-7 gap-6">
             
@@ -237,7 +237,7 @@ export default function OwnerDashboard() {
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-white/10 pb-3">
                 <div>
                   <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <span className="text-purple-400">📊</span> Section XVI-A: Commute Discovery Distribution
+                    <span className="text-purple-400">📊</span> Commute Discovery Distribution
                   </h3>
                   <p className="text-xs text-zinc-400 mt-0.5">
                     Commute time limits under which <strong>{selectedPropertyForAnalysis.title}</strong> was discovered by home seekers.
@@ -268,7 +268,7 @@ export default function OwnerDashboard() {
               </div>
 
               <div className="bg-purple-950/20 border border-purple-500/20 rounded-2xl p-3 text-xs text-zinc-300">
-                💡 <strong>Hedonic Accessibility Insight:</strong> Over <strong>75%</strong> of seeker discoveries occurred within a 20-minute commute corridor from central employment hubs (Nagpur Station, Dharampeth, Civil Lines).
+                💡 <strong>Commute Accessibility Insight:</strong> Over <strong>75%</strong> of home searches discovered this listing within a 20-minute commute corridor from central employment hubs.
               </div>
             </Card>
 
@@ -277,10 +277,10 @@ export default function OwnerDashboard() {
               <div>
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
                   <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-purple-400" /> Section XVI-B: ML Smart Pricing
+                    <Sparkles className="w-4 h-4 text-purple-400" /> AI Smart Pricing Assistant
                   </h3>
                   <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-[10px]">
-                    Hedonic Regression Active
+                    Dynamic Valuation Active
                   </Badge>
                 </div>
 
@@ -317,7 +317,7 @@ export default function OwnerDashboard() {
               </div>
 
               <div className="text-[11px] text-zinc-500 font-mono pt-3 border-t border-white/10">
-                Hedonic model: Naga Satish et al. [13], Tse & Chan [7]
+                Automated Hedonic Valuation Model
               </div>
             </Card>
 
@@ -398,7 +398,7 @@ export default function OwnerDashboard() {
               <Upload className="w-5 h-5 text-purple-400" /> Ingest 99acres / Multi-Site Scraper JSON
             </DialogTitle>
             <DialogDescription className="text-xs text-zinc-400">
-              Paste JSON output from <code className="text-purple-300">99acres-com-scraper</code> or <code className="text-purple-300">multi-site-real-estate-scraper</code> to import real properties directly into Commute Buddy 3NF database.
+              Paste JSON output from 99acres or Multi-Site Scraper to import listings directly into the Commute Buddy database.
             </DialogDescription>
           </DialogHeader>
 

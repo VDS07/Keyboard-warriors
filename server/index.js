@@ -1,430 +1,98 @@
 // =====================================================================
-// Commute Buddy: A Smart Commute-Aware Real-Estate and Housing Discovery Platform
-// Research Backend Server conforming to Paper Architecture (Figure 1, 2, 3)
-// Authors: Vallabh Shingroop, Rasika Khure, Purva Mahale, Yash Kolhe, Vedant Kharabe
-// CSE Dept, Tulsiramji Gaikwad Patil College of Engineering and Technology, Nagpur, India
+// Commute Buddy: Smart Commute-Aware Real-Estate Discovery Platform
+// Backend Server — LIVE FETCH ARCHITECTURE (No Local Storage)
+// All property data is fetched on-demand from real estate portals
 // =====================================================================
 
 import express from 'express';
 import cors from 'cors';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { ScraperService } from './scraperService.js';
+import dotenv from 'dotenv';
+import { OAuth2Client } from 'google-auth-library';
+import jwt from 'jsonwebtoken';
+import { userStore } from './userStore.js';
+import { fetchPropertiesForLocation, fetchAllPortals } from './liveFetcher.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+dotenv.config();
 
 const app = express();
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
 
-// ---------------------------------------------------------------------
-// In-Memory Database Store with Local Persistence (3NF Entities)
-// ---------------------------------------------------------------------
-const DATA_DIR = path.join(__dirname, 'data');
-const DATA_FILE = path.join(DATA_DIR, 'store.json');
-
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-// Initial realistic dataset across Nagpur, Mumbai, Bangalore, Pune, Delhi NCR, Hyderabad
-const INITIAL_PROPERTIES = [
-  // --- NAGPUR (Paper Authors' Region) ---
-  {
-    id: 1,
-    owner_id: 101,
-    title: "Dharampeth Heritage 3BHK Flat",
-    description: "Prestigious residence in the heart of Dharampeth. Premium modular kitchen, balcony overlooking Law College square, 24/7 water and metro connectivity.",
-    price: 22000,
-    recommendedPrice: 24500,
-    property_type: "apartment",
-    purpose: "rent",
-    bedrooms: 3,
-    bathrooms: 2,
-    sqft: 1350,
-    latitude: 21.1442,
-    longitude: 79.0658,
-    address: "West High Court Road, Dharampeth",
-    city: "Nagpur",
-    amenities: ["Metro Access", "Covered Parking", "Lift", "Power Backup", "Security"],
-    images: [
-      "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800",
-      "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800"
-    ],
-    livability_score: 92,
-    pet_friendly: true,
-    furnished: "furnished",
-    source_portal: "99acres",
-    source_url: "https://www.99acres.com/sample-nagpur-1",
-    status: "active",
-    owner: "Dr. Rajesh Mehta",
-    phone: "+91-9876543210",
-    views: 412,
-    inquiries: 38,
-    commute_discoveries: { under10: 18, "10to20": 45, "20to30": 22, over30: 6 }
-  },
-  {
-    id: 2,
-    owner_id: 102,
-    title: "Sadar Residency Studio Suite",
-    description: "Modern studio suite next to Sadar Cantonment and Residency Road. Ideal for young professionals working in central government offices and IT hubs.",
-    price: 13500,
-    recommendedPrice: 15000,
-    property_type: "studio",
-    purpose: "rent",
-    bedrooms: 1,
-    bathrooms: 1,
-    sqft: 520,
-    latitude: 21.1610,
-    longitude: 79.0825,
-    address: "Residency Road, Sadar",
-    city: "Nagpur",
-    amenities: ["WiFi", "Air Conditioning", "Security Guard", "24/7 Water"],
-    images: [
-      "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800"
-    ],
-    livability_score: 84,
-    pet_friendly: false,
-    furnished: "furnished",
-    source_portal: "MagicBricks",
-    source_url: "https://www.magicbricks.com/sample-nagpur-2",
-    status: "active",
-    owner: "Priya Deshmukh",
-    phone: "+91-9123456789",
-    views: 280,
-    inquiries: 24,
-    commute_discoveries: { under10: 25, "10to20": 30, "20to30": 12, over30: 3 }
-  },
-  {
-    id: 3,
-    owner_id: 103,
-    title: "Civil Lines Executive Villa",
-    description: "Stately independent bungalow in VIP Civil Lines corridor. Lush garden lawn, solar heating, high-grade security, minutes from High Court and Vidhan Bhavan.",
-    price: 52000,
-    recommendedPrice: 58000,
-    property_type: "villa",
-    purpose: "rent",
-    bedrooms: 4,
-    bathrooms: 4,
-    sqft: 2800,
-    latitude: 21.1550,
-    longitude: 79.0720,
-    address: "Near High Court, Civil Lines",
-    city: "Nagpur",
-    amenities: ["Private Garden", "Servant Quarters", "3 Car Parking", "Gated Security", "EV Charger"],
-    images: [
-      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800",
-      "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800"
-    ],
-    livability_score: 96,
-    pet_friendly: true,
-    furnished: "semi-furnished",
-    source_portal: "99acres",
-    source_url: "https://www.99acres.com/sample-nagpur-3",
-    status: "active",
-    owner: "Col. Anil Wankhede",
-    phone: "+91-9988776655",
-    views: 680,
-    inquiries: 85,
-    commute_discoveries: { under10: 32, "10to20": 60, "20to30": 19, over30: 4 }
-  },
-  {
-    id: 4,
-    owner_id: 104,
-    title: "Trimurti Nagar Smart 2BHK",
-    description: "Vibrant apartment near Ring Road and Trimurti Nagar square. Rapid access to VNIT, Hingna industrial zone, and MIHAN SEZ.",
-    price: 18500,
-    recommendedPrice: 20000,
-    property_type: "apartment",
-    purpose: "rent",
-    bedrooms: 2,
-    bathrooms: 2,
-    sqft: 1050,
-    latitude: 21.1215,
-    longitude: 79.0490,
-    address: "Ring Road, Trimurti Nagar",
-    city: "Nagpur",
-    amenities: ["Gym", "Intercom", "Elevator", "Children Play Area"],
-    images: [
-      "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800"
-    ],
-    livability_score: 87,
-    pet_friendly: true,
-    furnished: "semi-furnished",
-    source_portal: "NoBroker",
-    source_url: "https://www.nobroker.in/sample-nagpur-4",
-    status: "active",
-    owner: "Sunita Borkar",
-    phone: "+91-7766554433",
-    views: 390,
-    inquiries: 42,
-    commute_discoveries: { under10: 12, "10to20": 48, "20to30": 34, over30: 10 }
-  },
-  {
-    id: 5,
-    owner_id: 105,
-    title: "Wardha Road Tech Corridor 2BHK",
-    description: "Close to MIHAN Tech Park and Airport Metro station. Fast commuting along NH-44 for TCS, Infosys, and AIIMS professionals.",
-    price: 21000,
-    recommendedPrice: 22500,
-    property_type: "apartment",
-    purpose: "rent",
-    bedrooms: 2,
-    bathrooms: 2,
-    sqft: 1180,
-    latitude: 21.0850,
-    longitude: 79.0620,
-    address: "Wardha Road, Near Airport",
-    city: "Nagpur",
-    amenities: ["Swimming Pool", "Clubhouse", "Metro Feeder", "Piped Gas"],
-    images: [
-      "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800"
-    ],
-    livability_score: 89,
-    pet_friendly: false,
-    furnished: "furnished",
-    source_portal: "99acres",
-    source_url: "https://www.99acres.com/sample-nagpur-5",
-    status: "active",
-    owner: "Nikhil Joshi",
-    phone: "+91-9822334455",
-    views: 520,
-    inquiries: 56,
-    commute_discoveries: { under10: 20, "10to20": 55, "20to30": 30, over30: 8 }
-  },
-
-  // --- MUMBAI ---
-  {
-    id: 6,
-    owner_id: 106,
-    title: "Bandra West Sea-Facing Apartment",
-    description: "High-floor flat near Bandstand and Carter Road. Breath-taking sunset views and quick link to BKC via Western Express Highway.",
-    price: 95000,
-    recommendedPrice: 92000,
-    property_type: "apartment",
-    purpose: "rent",
-    bedrooms: 3,
-    bathrooms: 3,
-    sqft: 1650,
-    latitude: 19.0596,
-    longitude: 72.8295,
-    address: "Near Bandstand, Bandra West",
-    city: "Mumbai",
-    amenities: ["Sea View", "Concierge", "High Speed Lifts", "Valet Parking", "Clubhouse"],
-    images: ["https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800"],
-    livability_score: 95,
-    pet_friendly: true,
-    furnished: "furnished",
-    source_portal: "99acres",
-    source_url: "https://www.99acres.com/mumbai-bandra",
-    status: "active",
-    owner: "Meera Kapoor",
-    phone: "+91-9845671234",
-    views: 920,
-    inquiries: 140,
-    commute_discoveries: { under10: 30, "10to20": 70, "20to30": 45, over30: 15 }
-  },
-  {
-    id: 7,
-    owner_id: 107,
-    title: "Andheri East Metro Link 1BHK",
-    description: "Compact modern flat 2 minutes from Western Express Highway Metro. Direct transit line to BKC and Ghatkopar.",
-    price: 36000,
-    recommendedPrice: 38500,
-    property_type: "apartment",
-    purpose: "rent",
-    bedrooms: 1,
-    bathrooms: 1,
-    sqft: 620,
-    latitude: 19.1136,
-    longitude: 72.8697,
-    address: "WEH Metro Junction, Andheri East",
-    city: "Mumbai",
-    amenities: ["Metro Connected", "CCTV", "Piped Gas", "Lift"],
-    images: ["https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800"],
-    livability_score: 83,
-    pet_friendly: false,
-    furnished: "semi-furnished",
-    source_portal: "MagicBricks",
-    source_url: "https://www.magicbricks.com/mumbai-andheri",
-    status: "active",
-    owner: "Vikram Shah",
-    phone: "+91-9876123456",
-    views: 610,
-    inquiries: 74,
-    commute_discoveries: { under10: 40, "10to20": 85, "20to30": 25, over30: 6 }
-  },
-
-  // --- BANGALORE ---
-  {
-    id: 8,
-    owner_id: 108,
-    title: "Koramangala 4th Block Duplex",
-    description: "Lush residential duplex walking distance from tech incubators, cafes, and Sony World signal. High commute connectivity to Silk Board and Bellandur.",
-    price: 48000,
-    recommendedPrice: 51000,
-    property_type: "duplex",
-    purpose: "rent",
-    bedrooms: 3,
-    bathrooms: 3,
-    sqft: 1850,
-    latitude: 12.9345,
-    longitude: 77.6265,
-    address: "4th Block, Koramangala",
-    city: "Bangalore",
-    amenities: ["Private Terrace", "Covered Car Park", "Solar Water", "Pet Friendly"],
-    images: ["https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800"],
-    livability_score: 93,
-    pet_friendly: true,
-    furnished: "furnished",
-    source_portal: "99acres",
-    source_url: "https://www.99acres.com/bangalore-koramangala",
-    status: "active",
-    owner: "Arjun Rao",
-    phone: "+91-9845612345",
-    views: 740,
-    inquiries: 95,
-    commute_discoveries: { under10: 35, "10to20": 65, "20to30": 30, over30: 12 }
-  },
-
-  // --- PUNE ---
-  {
-    id: 9,
-    owner_id: 109,
-    title: "Koregaon Park Green View 2BHK",
-    description: "Quiet green neighborhood on Lane 5. 10 minutes to Pune Railway Station and Kalyani Nagar IT corridor.",
-    price: 32000,
-    recommendedPrice: 34000,
-    property_type: "apartment",
-    purpose: "rent",
-    bedrooms: 2,
-    bathrooms: 2,
-    sqft: 1150,
-    latitude: 18.5362,
-    longitude: 73.8948,
-    address: "Lane 5, Koregaon Park",
-    city: "Pune",
-    amenities: ["Gym", "Covered Parking", "Security", "Garden"],
-    images: ["https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800"],
-    livability_score: 91,
-    pet_friendly: true,
-    furnished: "furnished",
-    source_portal: "Makaan",
-    source_url: "https://www.makaan.com/pune-kp",
-    status: "active",
-    owner: "Manish Patil",
-    phone: "+91-9876509876",
-    views: 460,
-    inquiries: 52,
-    commute_discoveries: { under10: 22, "10to20": 58, "20to30": 26, over30: 5 }
-  },
-
-  // --- DELHI NCR ---
-  {
-    id: 10,
-    owner_id: 110,
-    title: "DLF Cyber City Executive Apartment",
-    description: "Opposite Cyber Hub Gurugram. Direct walkway access to Rapid Metro and multinational headquarters.",
-    price: 45000,
-    recommendedPrice: 47000,
-    property_type: "apartment",
-    purpose: "rent",
-    bedrooms: 2,
-    bathrooms: 2,
-    sqft: 1250,
-    latitude: 28.4950,
-    longitude: 77.0878,
-    address: "Phase 2, DLF Cyber City",
-    city: "Gurugram",
-    amenities: ["Rapid Metro Access", "Swimming Pool", "24/7 Power", "Club"],
-    images: ["https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800"],
-    livability_score: 90,
-    pet_friendly: false,
-    furnished: "furnished",
-    source_portal: "99acres",
-    source_url: "https://www.99acres.com/delhi-cybercity",
-    status: "active",
-    owner: "Rohit Aggarwal",
-    phone: "+91-9845679012",
-    views: 580,
-    inquiries: 70,
-    commute_discoveries: { under10: 45, "10to20": 60, "20to30": 20, over30: 4 }
-  }
+// Explicit CORS for frontend development and production origins
+const ALLOWED_ORIGINS = [
+  'http://localhost:8080',
+  'http://127.0.0.1:8080',
+  'http://localhost:5173',
 ];
 
-// Helper to load or initialize persistent store
-let store = {
-  properties: INITIAL_PROPERTIES,
+app.use(cors({
+  origin: function (origin, callback) {
+    // allow requests with no origin (e.g. server-to-server or tests)
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, false);
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.use(express.json({ limit: '10mb' }));
+
+const JWT_SECRET = process.env.JWT_SECRET || 'commute-buddy-secure-dev-jwt-secret-key-change-in-production';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || '';
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+
+// ---------------------------------------------------------------------
+// In-Memory Runtime Cache (volatile — never written to disk)
+// Properties live here only during server uptime
+// ---------------------------------------------------------------------
+let memoryCache = {
+  properties: [],
+  lastFetchKey: null,
+  lastFetchTime: 0,
   users: [
-    { id: 1, name: "Student Commuter", email: "seeker@commutebuddy.in", role: "seeker" },
-    { id: 101, name: "Dr. Rajesh Mehta", email: "rajesh.mehta@gmail.com", role: "owner" }
+    { id: 1, name: "Commuter", email: "seeker@commutebuddy.in", role: "seeker" },
   ],
-  inquiries: [
-    {
-      id: 1,
-      property_id: 1,
-      user_id: 1,
-      seeker_name: "Vallabh Shingroop",
-      seeker_phone: "+91-9876540001",
-      seeker_email: "vallabh@commutebuddy.org",
-      message: "Hello! I am a student/researcher looking for a 3BHK flat near Law College Square. Is this property available for viewing this weekend?",
-      preferred_date: "2026-10-05",
-      preferred_time_slot: "11:00 AM - 1:00 PM",
-      status: "pending",
-      created_at: new Date().toISOString()
-    }
-  ],
-  bookings: [
-    {
-      id: 1,
-      inquiry_id: 1,
-      property_id: 1,
-      user_id: 1,
-      booking_date: "2026-10-05",
-      time_slot: "11:00 AM",
-      status: "confirmed",
-      notes: "On-site visit confirmed with Dr. Rajesh Mehta",
-      created_at: new Date().toISOString()
-    }
-  ],
-  payments: [
-    {
-      id: 1,
-      booking_id: 1,
-      user_id: 1,
-      amount: 1000,
-      currency: "INR",
-      payment_method: "UPI",
-      payment_status: "completed",
-      transaction_id: "TXN_CB_88492019",
-      created_at: new Date().toISOString()
-    }
-  ]
+  inquiries: [],
+  bookings: [],
+  payments: []
 };
 
-if (fs.existsSync(DATA_FILE)) {
-  try {
-    const raw = fs.readFileSync(DATA_FILE, 'utf-8');
-    store = JSON.parse(raw);
-  } catch (err) {
-    console.warn("Could not parse store.json, using defaults:", err.message);
-  }
-} else {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(store, null, 2));
+// Cache TTL: 5 minutes.
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+function getCacheKey(lat, lng, city, purpose) {
+  const roundedLat = typeof lat === 'number' ? lat.toFixed(2) : '0';
+  const roundedLng = typeof lng === 'number' ? lng.toFixed(2) : '0';
+  return `${roundedLat}_${roundedLng}_${(city || '').toLowerCase()}_${purpose || 'rent'}`;
 }
 
-function saveStore() {
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(store, null, 2));
-  } catch (e) {
-    console.error("Error saving store:", e);
+async function ensureFreshData({ lat, lng, city, area, purpose = 'rent' }) {
+  const cacheKey = getCacheKey(lat, lng, city, purpose);
+  const isStale =
+    memoryCache.properties.length === 0 ||
+    memoryCache.lastFetchKey !== cacheKey ||
+    Date.now() - memoryCache.lastFetchTime > CACHE_TTL_MS;
+
+  if (isStale) {
+    console.log(`🔄 Live-fetching properties for location (${lat}, ${lng}) - ${city || area || 'area'} (${purpose})...`);
+    const listings = await fetchPropertiesForLocation({
+      lat: typeof lat === 'number' ? lat : 12.9345,
+      lng: typeof lng === 'number' ? lng : 77.6265,
+      city: city || 'Bengaluru',
+      area: area || city || '',
+      purpose: purpose || 'rent',
+    });
+    memoryCache.properties = listings;
+    memoryCache.lastFetchKey = cacheKey;
+    memoryCache.lastFetchTime = Date.now();
+    console.log(`✅ Loaded ${listings.length} live listings into volatile memory (zero local disk storage)`);
   }
 }
 
 // ---------------------------------------------------------------------
-// Haversine Closed-Form Calculation (Equation 4)
+// Haversine Distance Calculation
 // ---------------------------------------------------------------------
 function getHaversineDistanceKm(lat1, lon1, lat2, lon2) {
   const r = 6371; // Earth's mean radius in km
@@ -437,7 +105,7 @@ function getHaversineDistanceKm(lat1, lon1, lat2, lon2) {
   return 2 * r * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Mode speed bounds vmax(m) in km/min per Algorithm 1
+// Mode speed bounds in km/min
 const MODE_SPEED_BOUNDS = {
   drive: 2.0,    // 120 km/h
   transit: 1.33, // 80 km/h
@@ -446,86 +114,339 @@ const MODE_SPEED_BOUNDS = {
 };
 
 // ---------------------------------------------------------------------
-// Core Algorithm 1 Commute-Aware Property Query Endpoint
+// Authentication Endpoints (Production-Grade Google OAuth 2.0 & JWT)
 // ---------------------------------------------------------------------
-app.get('/api/properties', (req, res) => {
-  const {
-    wLat,
-    wLng,
-    tMax = 45,
-    mode = 'drive',
-    purpose,
-    property_type,
-    minPrice,
-    maxPrice,
-    city
-  } = req.query;
 
-  let candidates = [...store.properties];
+/**
+ * Real Google OAuth Token Verification & Session Creation
+ * Receives the Google ID token, verifies it via Google's official auth library,
+ * checks audience & validity, extracts sub/email/name/picture, finds or creates
+ * the user in persistent store, and signs an application-specific session JWT.
+ */
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { credential, role } = req.body;
 
-  if (city) {
-    candidates = candidates.filter(p => p.city.toLowerCase() === city.toLowerCase());
-  }
-  if (purpose) {
-    candidates = candidates.filter(p => p.purpose === purpose);
-  }
-  if (property_type) {
-    candidates = candidates.filter(p => p.property_type === property_type);
-  }
-  if (maxPrice) {
-    candidates = candidates.filter(p => p.price <= parseFloat(maxPrice));
-  }
-  if (minPrice) {
-    candidates = candidates.filter(p => p.price >= parseFloat(minPrice));
-  }
+    if (!credential || typeof credential !== 'string') {
+      return res.status(400).json({
+        error: 'Missing Google credential token',
+        message: 'A valid Google ID token credential must be provided.'
+      });
+    }
 
-  // If workplace coordinate is specified, apply Algorithm 1 two-stage filtering
-  if (wLat && wLng) {
-    const lat = parseFloat(wLat);
-    const lng = parseFloat(wLng);
-    const maxCommute = parseFloat(tMax);
-    const vmax = MODE_SPEED_BOUNDS[mode] || 1.33;
+    const clientId = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      console.error('❌ Authentication Server Error: GOOGLE_CLIENT_ID is not configured in .env');
+      return res.status(500).json({
+        error: 'Server authentication configuration missing',
+        message: 'Google Client ID is not configured on this server.'
+      });
+    }
 
-    const result = [];
-    for (const p of candidates) {
-      // Step 4: Great-circle distance
-      const dh = getHaversineDistanceKm(lat, lng, p.latitude, p.longitude);
+    // 1. Cryptographically verify the Google ID token against official Google certificates
+    let ticket;
+    try {
+      ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: clientId,
+      });
+    } catch (verifyErr) {
+      console.error('❌ Google ID token cryptographic verification failed:', verifyErr.message);
+      return res.status(401).json({
+        error: 'Invalid or expired Google token',
+        message: 'The Google token could not be verified or has expired. Please try signing in again.'
+      });
+    }
 
-      // Step 5: Haversine safe lower-bound pruning (Algorithm 1 line 5)
-      if (dh / vmax > maxCommute) {
-        continue; // Pruned: even a straight line at maximum speed exceeds budget
-      }
+    // 2. Read the verified payload (never trust unverified client data)
+    const payload = ticket.getPayload();
+    if (!payload) {
+      return res.status(401).json({
+        error: 'Invalid token payload',
+        message: 'No identity payload returned from Google verification.'
+      });
+    }
 
-      // Authoritative network estimation factor (calibrated with road network density)
-      const networkTortuosityFactor = mode === 'walk' ? 1.25 : mode === 'cycle' ? 1.3 : 1.45;
-      const speedKmPerHour = mode === 'drive' ? 32 : mode === 'transit' ? 22 : mode === 'cycle' ? 14 : 4.5;
-      const estimatedMinutes = Math.round((dh * networkTortuosityFactor / speedKmPerHour) * 60);
+    // 3. Extract verified fields
+    const { sub, email, email_verified, name, picture } = payload;
 
-      if (estimatedMinutes <= maxCommute) {
-        result.push({
-          ...p,
-          distanceKm: dh,
-          commuteMinutes: estimatedMinutes
+    // 4. Validate Google sub identifier (stable unique key)
+    if (!sub) {
+      return res.status(401).json({
+        error: 'Missing identity identifier',
+        message: 'Token does not contain a valid Google subject identifier.'
+      });
+    }
+
+    // 5. Require verified email
+    if (!email_verified || !email) {
+      return res.status(401).json({
+        error: 'Email not verified',
+        message: 'Your Google email address must be verified by Google to authenticate.'
+      });
+    }
+
+    // 6. Existing user vs new user logic
+    // Primary lookup: STRICTLY by Google "sub"
+    let user = userStore.findUserByGoogleId(sub);
+
+    if (user) {
+      // Existing user found by google_id: PRESERVE role and existing preferences
+      user = userStore.updateUser(user.id, {
+        name: name || user.name,
+        profile_picture: picture || user.profile_picture,
+      }) || user;
+      console.log(`✅ Existing Google user logged in: ${user.email} (sub: ${sub}, role: ${user.role})`);
+    } else {
+      // Check for existing account by verified email for safe account linking
+      const existingByEmail = userStore.findUserByEmail(email);
+      if (existingByEmail) {
+        user = userStore.updateUser(existingByEmail.id, {
+          google_id: sub,
+          profile_picture: picture || existingByEmail.profile_picture,
+          name: name || existingByEmail.name,
+        }) || existingByEmail;
+        console.log(`🔗 Linked existing email account to Google ID: ${user.email} (sub: ${sub}, role: ${user.role})`);
+      } else {
+        // Create new user, preserving requested role if provided (default: seeker)
+        const chosenRole = role === 'owner' ? 'owner' : 'seeker';
+        user = userStore.createUser({
+          googleId: sub,
+          email,
+          name: name || 'Google User',
+          profilePicture: picture || '',
+          role: chosenRole,
         });
+        console.log(`🎉 New user created via Google: ${user.email} (sub: ${sub}, role: ${user.role})`);
       }
     }
 
-    return res.json(result);
-  }
+    // 7. Issue the application's own long-term session JWT (never use Google ID token directly)
+    const appSessionToken = jwt.sign(
+      {
+        userId: user.id,
+        googleId: user.google_id,
+        email: user.email,
+        role: user.role,
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
-  res.json(candidates);
+    // 8. Return application session token and sanitized profile to frontend
+    return res.json({
+      success: true,
+      token: appSessionToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatar: user.profile_picture || '',
+        role: user.role,
+        googleId: user.google_id,
+        authProvider: 'google',
+      }
+    });
+
+  } catch (err) {
+    console.error('❌ Server error in /api/auth/google:', err);
+    return res.status(500).json({
+      error: 'Authentication failed',
+      message: 'An unexpected internal error occurred during authentication.'
+    });
+  }
 });
 
-// Single property details
-app.get('/api/properties/:id', (req, res) => {
-  const property = store.properties.find(p => p.id === parseInt(req.params.id, 10));
+/**
+ * Verify Application Session Token & Return Current User
+ */
+app.get('/api/auth/me', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing or malformed Authorization header' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = userStore.getUserById(decoded.userId) || 
+                 (decoded.googleId ? userStore.findUserByGoogleId(decoded.googleId) : null) ||
+                 (decoded.email ? userStore.findUserByEmail(decoded.email) : null);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User session not found' });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatar: user.profile_picture || '',
+        role: user.role,
+        googleId: user.google_id,
+      }
+    });
+  } catch (err) {
+    return res.status(401).json({
+      error: 'Invalid or expired session token',
+      details: err.message
+    });
+  }
+});
+
+/**
+ * Email / Password Login Endpoint (Unified with Application Session JWT)
+ */
+app.post('/api/auth/login', (req, res) => {
+  const { email, name, role = 'seeker', password } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'Email address is required' });
+  }
+
+  let user = userStore.findUserByEmail(email);
+  if (!user) {
+    user = userStore.createUser({
+      email,
+      name: name || email.split('@')[0],
+      role: role === 'owner' ? 'owner' : 'seeker',
+    });
+  } else if (role && user.role !== role) {
+    user = userStore.updateUser(user.id, { role }) || user;
+  }
+
+  const token = jwt.sign(
+    {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+
+  res.json({
+    success: true,
+    token,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatar: user.profile_picture || '',
+      role: user.role,
+      authProvider: 'credentials',
+    }
+  });
+});
+
+// ---------------------------------------------------------------------
+// Core API: Commute-Aware Property Search (Live Fetch)
+// ---------------------------------------------------------------------
+app.get('/api/properties', async (req, res) => {
+  const {
+    lat,
+    lng,
+    wLat,
+    wLng,
+    tMax,
+    mode = 'drive',
+    purpose = 'rent',
+    property_type,
+    minPrice,
+    maxPrice,
+    city,
+    area
+  } = req.query;
+
+  try {
+    const targetLat = parseFloat(lat || wLat);
+    const targetLng = parseFloat(lng || wLng);
+    const validLat = !isNaN(targetLat) ? targetLat : 12.9345;
+    const validLng = !isNaN(targetLng) ? targetLng : 77.6265;
+
+    // Live-fetch properties for the selected location
+    await ensureFreshData({
+      lat: validLat,
+      lng: validLng,
+      city,
+      area,
+      purpose
+    });
+
+    let candidates = [...memoryCache.properties];
+
+    if (purpose) {
+      candidates = candidates.filter(p => p.purpose === purpose);
+    }
+    if (property_type) {
+      candidates = candidates.filter(p => p.property_type === property_type);
+    }
+    if (maxPrice) {
+      candidates = candidates.filter(p => p.price <= parseFloat(maxPrice));
+    }
+    if (minPrice) {
+      candidates = candidates.filter(p => p.price >= parseFloat(minPrice));
+    }
+
+    // If tMax is specified, calculate distance and commute time
+    if (tMax && !isNaN(parseFloat(tMax))) {
+      const maxCommute = parseFloat(tMax);
+      const vmax = MODE_SPEED_BOUNDS[mode] || 1.33;
+
+      const result = [];
+      for (const p of candidates) {
+        const dh = getHaversineDistanceKm(validLat, validLng, p.latitude, p.longitude);
+
+        // Safe lower-bound pruning
+        if (dh / vmax > maxCommute) continue;
+
+        const networkTortuosityFactor = mode === 'walk' ? 1.25 : mode === 'cycle' ? 1.3 : 1.45;
+        const speedKmPerHour = mode === 'drive' ? 32 : mode === 'transit' ? 22 : mode === 'cycle' ? 14 : 4.5;
+        const estimatedMinutes = Math.max(1, Math.round((dh * networkTortuosityFactor / speedKmPerHour) * 60));
+
+        if (estimatedMinutes <= maxCommute) {
+          result.push({
+            ...p,
+            distanceKm: dh,
+            commuteMinutes: estimatedMinutes
+          });
+        }
+      }
+
+      return res.json(result);
+    }
+
+    res.json(candidates);
+  } catch (err) {
+    console.error('Error in /api/properties:', err);
+    res.status(500).json({ error: 'Failed to fetch properties', details: err.message });
+  }
+});
+
+// Single property details (from memory cache)
+app.get('/api/properties/:id', async (req, res) => {
+  await ensureFreshData();
+  const property = memoryCache.properties.find(p => p.id === parseInt(req.params.id, 10));
   if (!property) return res.status(404).json({ error: "Property not found" });
   res.json(property);
 });
 
-// Add listing (Owner Module Section XIV)
+// Force refresh from portals
+app.post('/api/properties/refresh', async (req, res) => {
+  const { city = 'bengaluru', purpose = 'rent' } = req.body;
+  memoryCache.lastFetchTime = 0; // invalidate cache
+  await ensureFreshData(city, purpose);
+  res.json({
+    success: true,
+    count: memoryCache.properties.length,
+    message: `Live-fetched ${memoryCache.properties.length} properties from real estate portals`
+  });
+});
+
+// Add listing (in-memory only — not persisted to disk)
 app.post('/api/properties', (req, res) => {
-  const newId = store.properties.length > 0 ? Math.max(...store.properties.map(p => p.id)) + 1 : 1;
+  const newId = memoryCache.properties.length > 0 ? Math.max(...memoryCache.properties.map(p => p.id)) + 1 : 1;
   const newProperty = {
     id: newId,
     owner_id: req.body.owner_id || 101,
@@ -540,68 +461,66 @@ app.post('/api/properties', (req, res) => {
     sqft: parseInt(req.body.sqft || 1000, 10),
     latitude: parseFloat(req.body.latitude || req.body.lat || 21.1458),
     longitude: parseFloat(req.body.longitude || req.body.lng || 79.0882),
-    address: req.body.address || "Nagpur",
+    address: req.body.address || "",
     city: req.body.city || "Nagpur",
     amenities: req.body.amenities || ["Lift", "Security", "Parking"],
-    images: req.body.images && req.body.images.length > 0 ? req.body.images : ["https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800"],
+    images: req.body.images && req.body.images.length > 0 ? req.body.images : [],
     livability_score: req.body.livability_score || 85,
     pet_friendly: !!req.body.pet_friendly,
     furnished: req.body.furnished || "semi-furnished",
-    source_portal: req.body.source_portal || "CommuteBuddy Owner",
+    source_portal: req.body.source_portal || "CommuteBuddy",
     source_url: req.body.source_url || null,
     status: "active",
     owner: req.body.owner || "Verified Owner",
-    phone: req.body.phone || "+91-9876543210",
+    phone: req.body.phone || "",
     views: 1,
     inquiries: 0,
     commute_discoveries: { under10: 1, "10to20": 0, "20to30": 0, over30: 0 }
   };
 
-  store.properties.unshift(newProperty);
-  saveStore();
+  memoryCache.properties.unshift(newProperty);
+  // NO saveStore() — intentionally never writes to disk
   res.status(201).json(newProperty);
 });
 
-// Update listing (Owner Control Center Section XV)
+// Update listing (in-memory only)
 app.put('/api/properties/:id', (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const index = store.properties.findIndex(p => p.id === id);
+  const index = memoryCache.properties.findIndex(p => p.id === id);
   if (index === -1) return res.status(404).json({ error: "Property not found" });
 
-  store.properties[index] = { ...store.properties[index], ...req.body, id };
-  saveStore();
-  res.json(store.properties[index]);
+  memoryCache.properties[index] = { ...memoryCache.properties[index], ...req.body, id };
+  res.json(memoryCache.properties[index]);
 });
 
-// Delete listing
+// Delete listing (from memory only)
 app.delete('/api/properties/:id', (req, res) => {
   const id = parseInt(req.params.id, 10);
-  store.properties = store.properties.filter(p => p.id !== id);
-  saveStore();
-  res.json({ success: true, message: `Property ${id} deleted` });
+  memoryCache.properties = memoryCache.properties.filter(p => p.id !== id);
+  res.json({ success: true, message: `Property ${id} removed from session` });
 });
 
 // ---------------------------------------------------------------------
-// Owner Stats & Analytics (Section XV & XVI-A)
+// Owner Stats & Analytics (from memory cache)
 // ---------------------------------------------------------------------
 app.get('/api/owner/stats', (req, res) => {
-  const totalViews = store.properties.reduce((sum, p) => sum + (p.views || 0), 0);
-  const totalInquiries = store.properties.reduce((sum, p) => sum + (p.inquiries || 0), 0);
-  
+  const totalViews = memoryCache.properties.reduce((sum, p) => sum + (p.views || 0), 0);
+  const totalInquiries = memoryCache.properties.reduce((sum, p) => sum + (p.inquiries || 0), 0);
+
   res.json({
-    totalProperties: store.properties.length,
+    totalProperties: memoryCache.properties.length,
     totalViews,
     totalInquiries,
-    activeListings: store.properties.filter(p => p.status === 'active').length,
+    activeListings: memoryCache.properties.filter(p => p.status === 'active').length,
     conversionRate: totalViews > 0 ? ((totalInquiries / totalViews) * 100).toFixed(1) : 0,
-    properties: store.properties
+    properties: memoryCache.properties
   });
 });
 
-// Record view or commute discovery asynchronously (write-behind per Section XX)
+// Record analytics (in-memory only)
 app.post('/api/analytics/discovery', (req, res) => {
   const { propertyId, commuteMinutes } = req.body;
-  const prop = store.properties.find(p => p.id === parseInt(propertyId, 10));
+  const prop = memoryCache.properties.find(p => p.id === parseInt(propertyId, 10));
   if (prop) {
     prop.views = (prop.views || 0) + 1;
     if (!prop.commute_discoveries) {
@@ -612,36 +531,29 @@ app.post('/api/analytics/discovery', (req, res) => {
     else if (mins < 20) prop.commute_discoveries["10to20"] += 1;
     else if (mins < 30) prop.commute_discoveries["20to30"] += 1;
     else prop.commute_discoveries.over30 += 1;
-
-    saveStore();
   }
   res.json({ success: true });
 });
 
 // ---------------------------------------------------------------------
-// Smart Pricing ML Valuation Model (Section XVI-B)
-// Hedonic pricing regression estimating price from structural + commute features
+// Smart Pricing ML Valuation Model
 // ---------------------------------------------------------------------
 app.post('/api/smart-pricing', (req, res) => {
   const { sqft, bedrooms, bathrooms, property_type, amenities = [], avgCommuteMinutes = 15, city = "Nagpur" } = req.body;
 
-  // Base city rate per sqft (INR)
+  // Base city rate per sqft (INR) across India
   const cityBaseRate = {
-    "Nagpur": 14.5,
-    "Mumbai": 48.0,
-    "Bangalore": 26.0,
-    "Pune": 22.0,
-    "Gurugram": 28.0,
-    "Delhi NCR": 28.0
-  }[city] || 18.0;
+    "Mumbai": 52.0, "Bengaluru": 32.0, "Bangalore": 32.0,
+    "Delhi NCR": 30.0, "Gurugram": 30.0, "Noida": 25.0,
+    "Hyderabad": 26.0, "Pune": 24.0, "Chennai": 24.0,
+    "Kolkata": 19.0, "Ahmedabad": 20.0, "Chandigarh": 21.0,
+    "Jaipur": 18.0, "Kochi": 18.0, "Nagpur": 16.0
+  }[city] || 22.0;
 
   const baseAreaVal = (sqft || 1000) * cityBaseRate;
   const bedroomVal = (bedrooms || 2) * 2200;
   const bathroomVal = (bathrooms || 2) * 1200;
   const amenityBonus = (amenities.length || 3) * 600;
-
-  // Commute Accessibility Penalty / Bonus (Tse & Chan [7], Rosen [6])
-  // Shorter commute to major hubs commands capitalized premium
   const commuteFactor = Math.max(0.75, 1.25 - (avgCommuteMinutes * 0.012));
 
   const predictedRent = Math.round((baseAreaVal + bedroomVal + bathroomVal + amenityBonus) * commuteFactor);
@@ -653,20 +565,20 @@ app.post('/api/smart-pricing', (req, res) => {
     range: { min: minRange, max: maxRange },
     commuteFactor: commuteFactor.toFixed(2),
     confidenceScore: 89,
-    methodology: "Multivariate Hedonic Price Regression (Section XVI-B)"
+    methodology: "Multivariate Hedonic Price Regression"
   });
 });
 
 // ---------------------------------------------------------------------
-// Inquiries, Bookings, & Payments Endpoints (Figure 2 Transaction Chain)
+// Inquiries, Bookings, & Payments (in-memory session only)
 // ---------------------------------------------------------------------
 app.get('/api/inquiries', (req, res) => {
-  res.json(store.inquiries);
+  res.json(memoryCache.inquiries);
 });
 
 app.post('/api/inquiries', (req, res) => {
   const newInquiry = {
-    id: store.inquiries.length + 1,
+    id: memoryCache.inquiries.length + 1,
     property_id: parseInt(req.body.property_id, 10),
     user_id: req.body.user_id || 1,
     seeker_name: req.body.seeker_name || "Applicant",
@@ -679,24 +591,20 @@ app.post('/api/inquiries', (req, res) => {
     created_at: new Date().toISOString()
   };
 
-  // Increment property inquiries counter
-  const prop = store.properties.find(p => p.id === newInquiry.property_id);
-  if (prop) {
-    prop.inquiries = (prop.inquiries || 0) + 1;
-  }
+  const prop = memoryCache.properties.find(p => p.id === newInquiry.property_id);
+  if (prop) prop.inquiries = (prop.inquiries || 0) + 1;
 
-  store.inquiries.unshift(newInquiry);
-  saveStore();
+  memoryCache.inquiries.unshift(newInquiry);
   res.status(201).json(newInquiry);
 });
 
 app.get('/api/bookings', (req, res) => {
-  res.json(store.bookings);
+  res.json(memoryCache.bookings);
 });
 
 app.post('/api/bookings', (req, res) => {
   const newBooking = {
-    id: store.bookings.length + 1,
+    id: memoryCache.bookings.length + 1,
     inquiry_id: req.body.inquiry_id || null,
     property_id: parseInt(req.body.property_id, 10),
     user_id: req.body.user_id || 1,
@@ -706,14 +614,13 @@ app.post('/api/bookings', (req, res) => {
     notes: req.body.notes || "",
     created_at: new Date().toISOString()
   };
-  store.bookings.unshift(newBooking);
-  saveStore();
+  memoryCache.bookings.unshift(newBooking);
   res.status(201).json(newBooking);
 });
 
 app.post('/api/payments', (req, res) => {
   const newPayment = {
-    id: store.payments.length + 1,
+    id: memoryCache.payments.length + 1,
     booking_id: req.body.booking_id || 1,
     user_id: req.body.user_id || 1,
     amount: parseFloat(req.body.amount || 500),
@@ -723,13 +630,12 @@ app.post('/api/payments', (req, res) => {
     transaction_id: `TXN_CB_${Date.now()}`,
     created_at: new Date().toISOString()
   };
-  store.payments.unshift(newPayment);
-  saveStore();
+  memoryCache.payments.unshift(newPayment);
   res.status(201).json(newPayment);
 });
 
 // ---------------------------------------------------------------------
-// OSRM Road Route Proxy (Section X & XII)
+// OSRM Road Route Proxy
 // ---------------------------------------------------------------------
 app.get('/api/route', async (req, res) => {
   const { fromLat, fromLng, toLat, toLng, mode = 'driving' } = req.query;
@@ -754,7 +660,7 @@ app.get('/api/route', async (req, res) => {
       });
     }
   } catch (err) {
-    // Graceful fallback to high-fidelity network-factor path
+    // Graceful fallback
     const directKm = getHaversineDistanceKm(parseFloat(fromLat), parseFloat(fromLng), parseFloat(toLat), parseFloat(toLng));
     const factor = mode === 'walk' ? 1.2 : 1.35;
     const speed = mode === 'drive' ? 32 : mode === 'transit' ? 22 : mode === 'cycle' ? 14 : 4.5;
@@ -775,29 +681,30 @@ app.get('/api/route', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------
-// Scraper Ingest Endpoint (99acres & Multi-Site Scraper)
+// Health / Status Endpoint
 // ---------------------------------------------------------------------
-app.post('/api/scraper/import', (req, res) => {
-  const { data, source = "99acres" } = req.body;
-  if (!data) return res.status(400).json({ error: "Missing data payload" });
-
-  try {
-    const normalized = ScraperService.parseScrapedBatch(data, source);
-    let count = 0;
-    for (const item of normalized) {
-      const newId = store.properties.length > 0 ? Math.max(...store.properties.map(p => p.id)) + 1 : 1;
-      store.properties.unshift({ ...item, id: newId });
-      count++;
-    }
-    saveStore();
-    res.json({ success: true, imported: count, totalProperties: store.properties.length });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to parse scraped data", details: err.message });
-  }
+app.get('/api/status', (req, res) => {
+  res.json({
+    status: 'live',
+    architecture: 'LIVE_FETCH — No local storage',
+    cached_properties: memoryCache.properties.length,
+    last_fetch_city: memoryCache.lastFetchCity,
+    last_fetch_time: memoryCache.lastFetchTime ? new Date(memoryCache.lastFetchTime).toISOString() : null,
+    cache_ttl_minutes: CACHE_TTL_MS / 60000,
+  });
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Commute Buddy Server running on http://localhost:${PORT}`);
-  console.log(`📡 Ready with ${store.properties.length} active listings`);
+  console.log(`📡 Architecture: LIVE FETCH — No local data storage`);
+  console.log(`🔄 Properties are fetched on-demand from real estate portals`);
+  console.log(`⏱️  Cache TTL: ${CACHE_TTL_MS / 60000} minutes`);
+
+  // Pre-warm cache with initial fetch
+  try {
+    await ensureFreshData('bengaluru', 'rent');
+  } catch (err) {
+    console.log(`⚠️  Initial fetch failed (will retry on first request): ${err.message}`);
+  }
 });

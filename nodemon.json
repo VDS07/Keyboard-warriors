@@ -1,0 +1,11 @@
+{
+  "watch": ["server"],
+  "ignore": [
+    "server/data/**",
+    "server\\data\\**",
+    "**/users.json",
+    "scratch/**",
+    "dist/**"
+  ],
+  "ext": "js"
+}

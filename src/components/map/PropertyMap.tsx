@@ -16,6 +16,7 @@ type PropertyMapProps = {
   focusedPropertyId: number | null;
   toCurrency: (price: number) => string;
   onPropertyFocus: (propertyId: number) => void;
+  onOpenDetails?: (propertyId: number) => void;
   hideControls?: boolean;
 };
 
@@ -72,15 +73,29 @@ export const PropertyMap = ({
   focusedPropertyId,
   toCurrency,
   onPropertyFocus,
+  onOpenDetails,
   hideControls = false,
 }: PropertyMapProps) => {
-  const { setWorkplace, maxCommute, transportMode, workplaceIcon, activeRoute, isRouteLoading, setSelectedPropertyId } = useSearch();
+  const { setWorkplace, maxCommute, transportMode, workplaceIcon, activeRoute, isRouteLoading, setSelectedPropertyId, isWorkplaceLocked } = useSearch();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const routeLayerRef = useRef<L.LayerGroup | null>(null);
+  const isLockedRef = useRef(isWorkplaceLocked);
+
+  useEffect(() => {
+    isLockedRef.current = isWorkplaceLocked;
+    if (mapRef.current) {
+      const container = mapRef.current.getContainer();
+      if (isWorkplaceLocked) {
+        container.style.cursor = "";
+      } else {
+        container.style.cursor = "crosshair";
+      }
+    }
+  }, [isWorkplaceLocked]);
 
   const [mapViewMode, setMapViewMode] = useState<MapViewMode>("normal");
   const [popupPropertyId, setPopupPropertyId] = useState<number | null>(null);
@@ -123,15 +138,33 @@ export const PropertyMap = ({
     const markersGroup = L.layerGroup().addTo(map);
     markersLayerRef.current = markersGroup;
 
-    // Reverse-geocode map-click to set Workplace Anchor (Section VIII)
+    // Reverse-geocode map-click to set Workplace Anchor (only when unlocked)
     map.on("click", async (e: L.LeafletMouseEvent) => {
+      if (isLockedRef.current) {
+        return; // Locked: do not change workplace when interacting or hovering
+      }
+
+      // Guard against clicks that hit markers or popups
+      const target = e.originalEvent.target as HTMLElement;
+      if (target?.closest(".leaflet-marker-icon, .leaflet-popup, .leaflet-control")) {
+        return;
+      }
+
       const { lat, lng } = e.latlng;
+      setWorkplace({
+        label: `Pin (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+        lat,
+        lng,
+      });
+
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&countrycodes=in&lat=${lat}&lon=${lng}`, {
+          headers: { "Accept-Language": "en" }
+        });
         if (res.ok) {
           const data = await res.json();
           setWorkplace({
-            label: data.display_name ? data.display_name.split(",").slice(0, 3).join(",") : `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`,
+            label: data.display_name ? data.display_name.split(",").slice(0, 3).join(",") : `Anchor (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
             lat,
             lng,
           });
@@ -141,7 +174,7 @@ export const PropertyMap = ({
         // Fallback
       }
       setWorkplace({
-        label: `Workplace (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+        label: `Anchor (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
         lat,
         lng,
       });
@@ -239,9 +272,9 @@ export const PropertyMap = ({
     const wpMarker = L.marker([workplace.lat, workplace.lng], { icon: wpIcon }).addTo(group);
     wpMarker.bindPopup(`
       <div class="p-1.5 font-sans">
-        <div class="text-[10px] uppercase font-bold text-purple-400">Workplace Anchor (W)</div>
+        <div class="text-[10px] uppercase font-bold text-purple-400">Workplace Anchor</div>
         <div class="font-bold text-xs text-white">${workplace.label}</div>
-        <div class="text-[10px] text-zinc-400 mt-1">Origin for all commute time calculations (Eq. 2)</div>
+        <div class="text-[10px] text-zinc-400 mt-1">Starting point for all commute calculations</div>
       </div>
     `, {
       className: "leaflet-dark-popup",
@@ -274,22 +307,46 @@ export const PropertyMap = ({
       const pMarker = L.marker([property.lat, property.lng], { icon: pIcon }).addTo(group);
 
       const popupHtml = `
-        <div class="space-y-1.5 text-xs text-white p-1 font-sans">
-          <div class="flex items-center justify-between gap-2">
-            <span class="font-bold text-sm text-purple-300">${property.title}</span>
-            <span class="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded font-mono font-bold">${property.matchScore}% Match</span>
+        <div class="space-y-1.5 text-xs text-white p-1 font-sans min-w-[220px] max-w-[250px]">
+          <div class="relative h-24 w-full rounded-xl overflow-hidden mb-1">
+            <img src="${property.image}" class="w-full h-full object-cover" />
+            <div class="absolute top-1.5 left-1.5 bg-black/80 text-[9px] px-1.5 py-0.5 rounded text-purple-300 font-semibold border border-purple-500/30">
+              🌐 ${property.brokerSource || "99acres"}
+            </div>
+            <div class="absolute bottom-1.5 right-1.5 bg-black/80 text-[9px] px-1.5 py-0.5 rounded text-zinc-300 font-mono">
+              📷 ${(property.images && property.images.length) || 5} photos
+            </div>
           </div>
-          <div class="font-bold text-pink-400 text-sm">${toCurrency(property.price)}/mo</div>
-          <div class="text-zinc-300 flex items-center gap-1.5">
+          <div class="flex items-center justify-between gap-1.5">
+            <span class="font-bold text-xs text-white truncate">${property.title}</span>
+            <span class="text-[9px] bg-purple-500/20 text-purple-300 px-1 py-0.5 rounded font-mono font-bold whitespace-nowrap">${property.matchScore}%</span>
+          </div>
+          ${property.societyName ? `<div class="text-[10px] text-purple-300 truncate">🏢 ${property.societyName}</div>` : ""}
+          <div class="flex items-baseline justify-between">
+            <span class="font-bold text-pink-400 text-xs">${toCurrency(property.price)}/mo</span>
+            <span class="text-[10px] text-zinc-400 font-mono">${property.sqft} sqft • ${property.bedrooms}BHK</span>
+          </div>
+          <div class="text-zinc-300 flex items-center justify-between text-[10px] pt-0.5 border-t border-white/10">
             <span>⏱️ <strong>${property.commuteMinutes} min</strong></span>
-            <span>•</span>
-            <span>🛣️ ${property.distanceKm.toFixed(1)} km</span>
+            <span class="text-purple-300 font-mono">${property.distanceKm.toFixed(1)} km</span>
           </div>
-          <div class="text-[10px] text-zinc-400">Click to view turn-by-turn road route (Eq. 7)</div>
+          <button id="view-details-btn-${property.id}" class="w-full mt-1 py-1.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-bold transition-all shadow-md active:scale-95 flex items-center justify-center gap-1 cursor-pointer">
+            <span>View Photos & Source Data</span> →
+          </button>
         </div>
       `;
 
       pMarker.bindPopup(popupHtml, { className: "leaflet-dark-popup" });
+
+      pMarker.on("popupopen", () => {
+        const btn = document.getElementById(`view-details-btn-${property.id}`);
+        if (btn) {
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            if (onOpenDetails) onOpenDetails(property.id);
+          };
+        }
+      });
 
       pMarker.on("click", () => {
         onPropertyFocus(property.id);
@@ -297,7 +354,7 @@ export const PropertyMap = ({
         setPopupPropertyId(property.id);
       });
     });
-  }, [workplace, properties, focusedPropertyId, popupPropertyId, timeRadiusKm, workplaceIcon]);
+  }, [workplace, properties, focusedPropertyId, popupPropertyId, timeRadiusKm, workplaceIcon, onOpenDetails]);
 
   // -----------------------------------------------------------------
   // Render OSRM Road Route Geometry Polyline (Section XII & Eq. 7)
@@ -404,13 +461,13 @@ export const PropertyMap = ({
       {/* Floating Controls */}
       {!hideControls && (
         <>
-          {/* Zoom Controls */}
-          <div className="pointer-events-auto absolute bottom-6 right-6 z-[500] flex flex-col gap-2">
+          {/* Zoom Controls (Docked cleanly on the left above layer switcher) */}
+          <div className="pointer-events-auto absolute bottom-20 left-6 z-[500] flex flex-col gap-1.5">
             <button
               type="button"
               aria-label="Zoom in"
               onClick={() => handleZoom(1)}
-              className="h-10 w-10 rounded-full bg-black/80 text-lg font-bold text-white border border-white/20 backdrop-blur-xl shadow-2xl transition-transform hover:scale-110 active:scale-95 flex items-center justify-center"
+              className="h-9 w-9 rounded-xl bg-black/85 text-base font-bold text-white border border-white/20 backdrop-blur-xl shadow-xl transition-transform hover:scale-110 active:scale-95 flex items-center justify-center hover:bg-purple-600 hover:border-purple-500/50"
             >
               +
             </button>
@@ -418,7 +475,7 @@ export const PropertyMap = ({
               type="button"
               aria-label="Zoom out"
               onClick={() => handleZoom(-1)}
-              className="h-10 w-10 rounded-full bg-black/80 text-lg font-bold text-white border border-white/20 backdrop-blur-xl shadow-2xl transition-transform hover:scale-110 active:scale-95 flex items-center justify-center"
+              className="h-9 w-9 rounded-xl bg-black/85 text-base font-bold text-white border border-white/20 backdrop-blur-xl shadow-xl transition-transform hover:scale-110 active:scale-95 flex items-center justify-center hover:bg-purple-600 hover:border-purple-500/50"
             >
               −
             </button>
@@ -446,6 +503,14 @@ export const PropertyMap = ({
             <div className="pointer-events-none absolute top-28 left-1/2 -translate-x-1/2 z-[500] flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/90 border border-purple-500/50 text-xs text-purple-300 shadow-2xl backdrop-blur-md animate-pulse">
               <Compass className="w-3.5 h-3.5 animate-spin text-purple-400" />
               <span>Computing OSRM Shortest Path...</span>
+            </div>
+          )}
+
+          {/* Unlocked Workplace Hint Banner */}
+          {!isWorkplaceLocked && (
+            <div className="pointer-events-none absolute top-24 left-1/2 -translate-x-1/2 z-[450] flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/95 text-zinc-950 text-xs font-extrabold shadow-2xl backdrop-blur-md border border-amber-300 animate-bounce">
+              <span className="w-2.5 h-2.5 rounded-full bg-zinc-950 animate-ping" />
+              <span>📍 Click anywhere on map to set workplace, then click 'Set & Lock'</span>
             </div>
           )}
         </>

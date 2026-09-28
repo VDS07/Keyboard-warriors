@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useMemo, useEffect, ReactNode } from "react";
+import { supabaseProfiles, supabaseSavedProperties, supabaseProperties, isSupabaseConfigured } from "@/lib/supabase";
 
 export type TransportMode = "drive" | "transit" | "cycle" | "walk";
 export type UserRole = "seeker" | "owner";
@@ -39,6 +40,24 @@ export type Property = {
     "20to30": number;
     over30: number;
   };
+  // Real Source Website Data Fields (99acres, MagicBricks, Housing.com)
+  sourceUrl?: string;
+  societyName?: string;
+  reraId?: string;
+  carpetSqft?: number;
+  superSqft?: number;
+  floor?: string;
+  facing?: string;
+  securityDeposit?: string;
+  maintenance?: string;
+  availability?: string;
+  propertyAge?: string;
+  waterSupply?: string;
+  powerBackup?: string;
+  gatedCommunity?: boolean;
+  verifiedBadge?: string;
+  brokerType?: string;
+  amenities?: string[];
 };
 
 export type EnrichedProperty = Property & {
@@ -83,6 +102,8 @@ export type UserProfile = {
   avatar: string;
   role: UserRole;
   isLoggedIn: boolean;
+  authProvider?: "google" | "credentials" | "guest";
+  googleId?: string;
 };
 
 type SearchState = {
@@ -90,6 +111,7 @@ type SearchState = {
   workplaceIcon: WorkplaceIcon;
   maxCommute: number;
   maxPrice: number;
+  minPrice: number;
   targetSqft: number;
   transportMode: TransportMode;
   purpose: Purpose;
@@ -101,6 +123,14 @@ type SearchState = {
   savedPropertyIds: number[];
   activeRoute: ActiveRoute | null;
   isRouteLoading: boolean;
+  isWorkplaceLocked: boolean;
+  isPropertiesLoading: boolean;
+  fetchStatusMessage: string;
+  selectedBhk: number | null;
+  selectedPropertyType: string | null;
+  selectedFurnished: string | null;
+  verifiedOnly: boolean;
+  sortBy: "match" | "commute" | "price_asc" | "price_desc" | "livability";
 };
 
 type SearchContextType = SearchState & {
@@ -108,6 +138,7 @@ type SearchContextType = SearchState & {
   setWorkplaceIcon: (i: WorkplaceIcon) => void;
   setMaxCommute: (m: number) => void;
   setMaxPrice: (p: number) => void;
+  setMinPrice: (p: number) => void;
   setTargetSqft: (s: number) => void;
   setTransportMode: (t: TransportMode) => void;
   setPurpose: (p: Purpose) => void;
@@ -120,19 +151,33 @@ type SearchContextType = SearchState & {
   registerProperty: (p: Omit<Property, "id">) => Promise<Property>;
   deleteProperty: (id: number) => Promise<void>;
   fetchRouteForProperty: (property: Property) => Promise<void>;
+  loginWithSession: (token: string, user: any) => UserProfile;
+  loginWithGoogle: (account?: {
+    name?: string;
+    email?: string;
+    avatar?: string;
+    role?: UserRole;
+    googleId?: string;
+  }) => UserProfile;
   loginWithGoogleDemo: (role?: UserRole) => void;
   logout: () => void;
   properties: EnrichedProperty[];
   filteredProperties: EnrichedProperty[];
   allRawProperties: Property[];
-  refreshData: () => Promise<void>;
+  refreshData: (customLat?: number, customLng?: number, customLabel?: string, customPurpose?: Purpose) => Promise<void>;
+  setIsWorkplaceLocked: (locked: boolean | ((prev: boolean) => boolean)) => void;
+  setSelectedBhk: (bhk: number | null) => void;
+  setSelectedPropertyType: (type: string | null) => void;
+  setSelectedFurnished: (f: string | null) => void;
+  setVerifiedOnly: (v: boolean) => void;
+  setSortBy: (s: "match" | "commute" | "price_asc" | "price_desc" | "livability") => void;
 };
 
-// Nagpur Metro Center (Authors' Region - TGPCET Nagpur)
+// Default Anchor (Koramangala Hub, Bengaluru)
 const DEFAULT_WORKPLACE: Workplace = {
-  label: "TGPCET / Nagpur Metro Station, Nagpur",
-  lat: 21.1458,
-  lng: 79.0882,
+  label: "HSR Layout / Koramangala Hub, Bengaluru",
+  lat: 12.9345,
+  lng: 77.6265,
 };
 
 // Mode speed bounds vmax(m) in km/min for Algorithm 1 pruning
@@ -169,234 +214,8 @@ export const getDistanceKm = (aLat: number, aLng: number, bLat: number, bLng: nu
 export const estimateCommuteMinutes = (distanceKm: number, mode: TransportMode) =>
   Math.max(1, Math.round(distanceKm / (SPEED_FACTORS[mode] || 0.45)));
 
-// Baseline Properties for Instant Offline / Standalone Public Support
-const SEED_PROPERTIES: Property[] = [
-  {
-    id: 1,
-    title: "Dharampeth Heritage 3BHK Flat",
-    price: 22000,
-    recommendedPrice: 24500,
-    lat: 21.1442,
-    lng: 79.0658,
-    bedrooms: 3,
-    bathrooms: 2,
-    sqft: 1350,
-    image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800",
-    type: "apartment",
-    livabilityScore: 92,
-    petFriendly: true,
-    furnished: "furnished",
-    description: "Prestigious residence in the heart of Dharampeth. Balcony overlooking Law College Square, fast access to Metro.",
-    city: "Nagpur",
-    address: "West High Court Road, Dharampeth",
-    brokerSource: "99acres",
-    contactName: "Dr. Rajesh Mehta",
-    contactPhone: "+91-9876543210",
-    views: 412,
-    inquiries: 38,
-    commute_discoveries: { under10: 18, "10to20": 45, "20to30": 22, over30: 6 }
-  },
-  {
-    id: 2,
-    title: "Sadar Residency Studio Suite",
-    price: 13500,
-    recommendedPrice: 15000,
-    lat: 21.1610,
-    lng: 79.0825,
-    bedrooms: 1,
-    bathrooms: 1,
-    sqft: 520,
-    image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800",
-    type: "studio",
-    livabilityScore: 84,
-    petFriendly: false,
-    furnished: "furnished",
-    description: "Modern studio suite next to Sadar Cantonment and Residency Road. Ideal for young professionals.",
-    city: "Nagpur",
-    address: "Residency Road, Sadar",
-    brokerSource: "MagicBricks",
-    contactName: "Priya Deshmukh",
-    contactPhone: "+91-9123456789",
-    views: 280,
-    inquiries: 24,
-    commute_discoveries: { under10: 25, "10to20": 30, "20to30": 12, over30: 3 }
-  },
-  {
-    id: 3,
-    title: "Civil Lines Executive Villa",
-    price: 52000,
-    recommendedPrice: 58000,
-    lat: 21.1550,
-    lng: 79.0720,
-    bedrooms: 4,
-    bathrooms: 4,
-    sqft: 2800,
-    image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800",
-    type: "villa",
-    livabilityScore: 96,
-    petFriendly: true,
-    furnished: "semi-furnished",
-    description: "VIP Civil Lines corridor. Lush garden lawn, solar heating, high-grade security, minutes from High Court.",
-    city: "Nagpur",
-    address: "Near High Court, Civil Lines",
-    brokerSource: "99acres",
-    contactName: "Col. Anil Wankhede",
-    contactPhone: "+91-9988776655",
-    views: 680,
-    inquiries: 85,
-    commute_discoveries: { under10: 32, "10to20": 60, "20to30": 19, over30: 4 }
-  },
-  {
-    id: 4,
-    title: "Trimurti Nagar Smart 2BHK",
-    price: 18500,
-    recommendedPrice: 20000,
-    lat: 21.1215,
-    lng: 79.0490,
-    bedrooms: 2,
-    bathrooms: 2,
-    sqft: 1050,
-    image: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800",
-    type: "apartment",
-    livabilityScore: 87,
-    petFriendly: true,
-    furnished: "semi-furnished",
-    description: "Vibrant apartment near Ring Road. Rapid access to VNIT, Hingna industrial zone, and MIHAN SEZ.",
-    city: "Nagpur",
-    address: "Ring Road, Trimurti Nagar",
-    brokerSource: "NoBroker",
-    contactName: "Sunita Borkar",
-    contactPhone: "+91-7766554433",
-    views: 390,
-    inquiries: 42,
-    commute_discoveries: { under10: 12, "10to20": 48, "20to30": 34, over30: 10 }
-  },
-  {
-    id: 5,
-    title: "Wardha Road Tech Corridor 2BHK",
-    price: 21000,
-    recommendedPrice: 22500,
-    lat: 21.0850,
-    lng: 79.0620,
-    bedrooms: 2,
-    bathrooms: 2,
-    sqft: 1180,
-    image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800",
-    type: "apartment",
-    livabilityScore: 89,
-    petFriendly: false,
-    furnished: "furnished",
-    description: "Close to MIHAN Tech Park & Airport Metro. Fast commuting along NH-44 for TCS, Infosys, and AIIMS.",
-    city: "Nagpur",
-    address: "Wardha Road, Near Airport",
-    brokerSource: "99acres",
-    contactName: "Nikhil Joshi",
-    contactPhone: "+91-9822334455",
-    views: 520,
-    inquiries: 56,
-    commute_discoveries: { under10: 20, "10to20": 55, "20to30": 30, over30: 8 }
-  },
-  {
-    id: 6,
-    title: "Bandra West Sea-Facing Apartment",
-    price: 95000,
-    recommendedPrice: 92000,
-    lat: 19.0596,
-    lng: 72.8295,
-    bedrooms: 3,
-    bathrooms: 3,
-    sqft: 1650,
-    image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800",
-    type: "apartment",
-    livabilityScore: 95,
-    petFriendly: true,
-    furnished: "furnished",
-    description: "High-floor flat near Bandstand and Carter Road. Breath-taking sunset views and quick link to BKC.",
-    city: "Mumbai",
-    address: "Near Bandstand, Bandra West",
-    brokerSource: "99acres",
-    contactName: "Meera Kapoor",
-    contactPhone: "+91-9845671234",
-    views: 920,
-    inquiries: 140,
-    commute_discoveries: { under10: 30, "10to20": 70, "20to30": 45, over30: 15 }
-  },
-  {
-    id: 7,
-    title: "Koramangala 4th Block Duplex",
-    price: 48000,
-    recommendedPrice: 51000,
-    lat: 12.9345,
-    lng: 77.6265,
-    bedrooms: 3,
-    bathrooms: 3,
-    sqft: 1850,
-    image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800",
-    type: "duplex",
-    livabilityScore: 93,
-    petFriendly: true,
-    furnished: "furnished",
-    description: "Lush residential duplex walking distance from tech hubs, Sony World signal, and Silk Board corridor.",
-    city: "Bangalore",
-    address: "4th Block, Koramangala",
-    brokerSource: "99acres",
-    contactName: "Arjun Rao",
-    contactPhone: "+91-9845612345",
-    views: 740,
-    inquiries: 95,
-    commute_discoveries: { under10: 35, "10to20": 65, "20to30": 30, over30: 12 }
-  },
-  {
-    id: 8,
-    title: "Koregaon Park Green View 2BHK",
-    price: 32000,
-    recommendedPrice: 34000,
-    lat: 18.5362,
-    lng: 73.8948,
-    bedrooms: 2,
-    bathrooms: 2,
-    sqft: 1150,
-    image: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800",
-    type: "apartment",
-    livabilityScore: 91,
-    petFriendly: true,
-    furnished: "furnished",
-    description: "Quiet green lane in KP. 10 minutes to Pune Railway Station and Kalyani Nagar IT corridor.",
-    city: "Pune",
-    address: "Lane 5, Koregaon Park",
-    brokerSource: "Makaan",
-    contactName: "Manish Patil",
-    contactPhone: "+91-9876509876",
-    views: 460,
-    inquiries: 52,
-    commute_discoveries: { under10: 22, "10to20": 58, "20to30": 26, over30: 5 }
-  },
-  {
-    id: 9,
-    title: "DLF Cyber City Executive Apartment",
-    price: 45000,
-    recommendedPrice: 47000,
-    lat: 28.4950,
-    lng: 77.0878,
-    bedrooms: 2,
-    bathrooms: 2,
-    sqft: 1250,
-    image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800",
-    type: "apartment",
-    livabilityScore: 90,
-    petFriendly: false,
-    furnished: "furnished",
-    description: "Opposite Cyber Hub Gurugram. Direct walkway access to Rapid Metro and corporate tech parks.",
-    city: "Gurugram",
-    address: "Phase 2, DLF Cyber City",
-    brokerSource: "99acres",
-    contactName: "Rohit Aggarwal",
-    contactPhone: "+91-9845679012",
-    views: 580,
-    inquiries: 70,
-    commute_discoveries: { under10: 45, "10to20": 60, "20to30": 20, over30: 4 }
-  }
-];
+// NO SEED PROPERTIES — All data is fetched live from real estate portals & OpenStreetMap APIs
+// Zero local file storage
 
 const SearchContext = createContext<SearchContextType | null>(null);
 
@@ -405,40 +224,90 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [workplaceIcon, setWorkplaceIcon] = useState<WorkplaceIcon>("office");
   const [maxCommute, setMaxCommute] = useState<number>(45);
   const [maxPrice, setMaxPrice] = useState<number>(100000);
+  const [minPrice, setMinPrice] = useState<number>(0);
   const [targetSqft, setTargetSqft] = useState<number>(1200);
   const [transportMode, setTransportMode] = useState<TransportMode>("drive");
   const [purpose, setPurpose] = useState<Purpose>("rent");
   const [userRole, setUserRole] = useState<UserRole>("seeker");
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    name: "Dr. Vallabh Shingroop",
-    email: "vallabh@tgpcet.ac.in",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200",
-    role: "seeker",
-    isLoggedIn: true,
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
+    try {
+      const saved = localStorage.getItem("cb_user_profile");
+      const token = localStorage.getItem("cb_auth_token");
+      if (saved && token) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.email) {
+          return { ...parsed, isLoggedIn: true };
+        }
+      }
+    } catch {}
+    return {
+      name: "Guest Commuter",
+      email: "",
+      avatar: "",
+      role: "seeker",
+      isLoggedIn: false,
+    };
   });
 
-  // Ranking weights defaulting to equal thirds per Section XI: w1 = w2 = w3 = 0.333
+  // Filter & sorting states
+  const [selectedBhk, setSelectedBhk] = useState<number | null>(null);
+  const [selectedPropertyType, setSelectedPropertyType] = useState<string | null>(null);
+  const [selectedFurnished, setSelectedFurnished] = useState<string | null>(null);
+  const [verifiedOnly, setVerifiedOnly] = useState<boolean>(false);
+  const [sortBy, setSortBy] = useState<"match" | "commute" | "price_asc" | "price_desc" | "livability">("match");
+
+  // Loading & status
+  const [isPropertiesLoading, setIsPropertiesLoading] = useState<boolean>(true);
+  const [fetchStatusMessage, setFetchStatusMessage] = useState<string>("Initializing live API discovery...");
+
   const [rankingWeights, setRankingWeights] = useState<RankingWeights>({
     w1: 0.334, // Commute time weight
     w2: 0.333, // Price fit weight
     w3: 0.333, // Area fit weight
   });
 
-  const [rawProperties, setRawProperties] = useState<Property[]>(SEED_PROPERTIES);
+  const [rawProperties, setRawProperties] = useState<Property[]>([]);
   const [focusedPropertyId, setFocusedPropertyId] = useState<number | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
-  const [savedPropertyIds, setSavedPropertyIds] = useState<number[]>([1, 3, 5]);
+  const [savedPropertyIds, setSavedPropertyIds] = useState<number[]>([]);
   const [activeRoute, setActiveRoute] = useState<ActiveRoute | null>(null);
   const [isRouteLoading, setIsRouteLoading] = useState<boolean>(false);
+  const [isWorkplaceLocked, setIsWorkplaceLocked] = useState<boolean>(true);
 
-  // Sync with backend API if available, else retain cached / seeded properties
-  const refreshData = async () => {
+  // Live-fetch from backend (proxies to real estate portals + Overpass API)
+  // NO local file storage — everything streamed dynamically via API
+  const refreshData = async (
+    customLat?: number,
+    customLng?: number,
+    customLabel?: string,
+    customPurpose?: Purpose
+  ) => {
+    const targetLat = typeof customLat === "number" ? customLat : workplace.lat;
+    const targetLng = typeof customLng === "number" ? customLng : workplace.lng;
+    const targetLabel = customLabel || workplace.label;
+    const targetPurpose = customPurpose || purpose;
+
+    const parts = targetLabel.split(",").map((s) => s.trim());
+    const area = parts[0] || "";
+    const city =
+      parts.length > 1
+        ? parts[parts.length - (parts[parts.length - 1].toLowerCase() === "india" ? 2 : 1)]
+        : area;
+
+    setIsPropertiesLoading(true);
+    setFetchStatusMessage(
+      `📡 Fetching properties in ${area || city} via 99acres, MagicBricks, Housing.com & OpenStreetMap...`
+    );
+
     try {
-      const res = await fetch("http://localhost:3001/api/properties");
+      const url = `http://localhost:3001/api/properties?lat=${targetLat}&lng=${targetLng}&city=${encodeURIComponent(
+        city
+      )}&area=${encodeURIComponent(area)}&purpose=${targetPurpose}`;
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          const mapped = data.map((p: any) => ({
+        if (Array.isArray(data)) {
+          const mapped: Property[] = data.map((p: any) => ({
             id: p.id,
             owner_id: p.owner_id,
             title: p.title,
@@ -449,49 +318,204 @@ export function SearchProvider({ children }: { children: ReactNode }) {
             bedrooms: p.bedrooms,
             bathrooms: p.bathrooms,
             sqft: p.sqft,
-            image: (p.images && p.images[0]) || p.image || "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800",
-            images: p.images,
+            image: (p.images && p.images[0]) || p.image || "",
+            images:
+              Array.isArray(p.images) && p.images.length > 0
+                ? p.images
+                : p.image
+                ? [p.image]
+                : [],
             type: p.property_type || p.type || "apartment",
             livabilityScore: p.livability_score || p.livabilityScore || 85,
             petFriendly: p.pet_friendly !== undefined ? p.pet_friendly : p.petFriendly,
             furnished: p.furnished || "semi-furnished",
             description: p.description,
-            city: p.city || "Nagpur",
+            city: p.city || city || "",
             address: p.address,
-            brokerSource: p.source_portal || p.brokerSource || "99acres",
+            brokerSource: p.source_portal || p.brokerSource || "Portal",
             contactName: p.owner || p.contactName,
             contactPhone: p.phone || p.contactPhone,
             views: p.views || 0,
             inquiries: p.inquiries || 0,
-            commute_discoveries: p.commute_discoveries
+            commute_discoveries: p.commute_discoveries,
+            sourceUrl: p.source_url || p.sourceUrl,
+            societyName: p.society_name || p.societyName,
+            reraId: p.rera_id || p.reraId,
+            carpetSqft: p.carpet_area || p.carpetSqft || Math.round((p.sqft || 1000) * 0.78),
+            superSqft: p.super_area || p.superSqft || p.sqft || 1000,
+            floor: p.floor,
+            facing: p.facing,
+            securityDeposit: p.security_deposit || p.securityDeposit,
+            maintenance: p.maintenance,
+            availability: p.availability || "Ready to Move",
+            propertyAge: p.property_age || p.propertyAge,
+            waterSupply: p.water_supply || p.waterSupply,
+            powerBackup: p.power_backup || p.powerBackup,
+            gatedCommunity: p.gated_community !== undefined ? p.gated_community : true,
+            verifiedBadge: p.verified_badge || p.verifiedBadge,
+            brokerType: p.broker_type || p.brokerType,
+            amenities: Array.isArray(p.amenities) && p.amenities.length > 0 ? p.amenities : [],
           }));
           setRawProperties(mapped);
+          setFetchStatusMessage(
+            `✅ Loaded ${mapped.length} live properties near ${area || city} (Zero local storage)`
+          );
         }
       }
     } catch {
-      // Offline fallback: Use current rawProperties
+      setFetchStatusMessage("Connecting to property stream...");
+    } finally {
+      setIsPropertiesLoading(false);
     }
   };
 
+  // Watch for location changes (lat/lng or purpose) to trigger live API fetching
   useEffect(() => {
-    refreshData();
+    refreshData(workplace.lat, workplace.lng, workplace.label, purpose);
+  }, [workplace.lat, workplace.lng, purpose]);
+
+  const toggleSaveProperty = async (id: number) => {
+    const isCurrentlySaved = savedPropertyIds.includes(id);
+    const newSaved = isCurrentlySaved
+      ? savedPropertyIds.filter((item) => item !== id)
+      : [...savedPropertyIds, id];
+    setSavedPropertyIds(newSaved);
+
+    if (userProfile.email) {
+      if (isCurrentlySaved) {
+        await supabaseSavedProperties.unsaveProperty(userProfile.email, id);
+      } else {
+        const prop = rawProperties.find((p) => p.id === id);
+        await supabaseSavedProperties.saveProperty(userProfile.email, id, prop);
+      }
+    }
+  };
+
+  // Restore user session and bookmarks from Supabase / cloud
+  useEffect(() => {
+    const initUserData = async () => {
+      try {
+        const saved = localStorage.getItem("cb_user_profile");
+        const token = localStorage.getItem("cb_auth_token");
+        if (saved && token) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.email) {
+            setUserProfile({ ...parsed, isLoggedIn: true });
+            setUserRole(parsed.role || "seeker");
+
+            // Verify with backend session endpoint
+            fetch("http://localhost:3001/api/auth/me", {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+              .then(async (r) => {
+                if (r.ok) {
+                  const data = await r.json();
+                  if (data.user) {
+                    setUserProfile((prev) => ({
+                      ...prev,
+                      name: data.user.name || prev.name,
+                      avatar: data.user.avatar || prev.avatar,
+                      role: data.user.role || prev.role,
+                      isLoggedIn: true,
+                    }));
+                  }
+                }
+              })
+              .catch(() => {});
+
+            // Fetch user's saved bookmarks from Supabase database
+            const ids = await supabaseSavedProperties.getSavedPropertyIds(parsed.email);
+            if (ids && ids.length) {
+              setSavedPropertyIds(ids);
+            }
+          }
+        }
+      } catch {}
+    };
+
+    initUserData();
   }, []);
 
-  const toggleSaveProperty = (id: number) => {
-    setSavedPropertyIds(prev =>
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    );
+  const loginWithSession = (token: string, user: any): UserProfile => {
+    const role: UserRole = user.role === "owner" ? "owner" : "seeker";
+    const profile: UserProfile = {
+      name: user.name || (role === "owner" ? "Property Owner" : "Commuter"),
+      email: user.email || "",
+      avatar:
+        user.avatar ||
+        user.profile_picture ||
+        `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name || "User")}`,
+      role,
+      isLoggedIn: true,
+      authProvider: user.authProvider || "google",
+      googleId: user.googleId || user.google_id,
+    };
+
+    setUserRole(role);
+    setUserProfile(profile);
+
+    // Save profile to Supabase PostgreSQL database
+    supabaseProfiles.upsertProfile(profile);
+
+    // Fetch user bookmarks from Supabase
+    if (profile.email) {
+      supabaseSavedProperties.getSavedPropertyIds(profile.email).then((ids) => {
+        if (ids && ids.length) setSavedPropertyIds(ids);
+      });
+    }
+
+    try {
+      localStorage.setItem("cb_auth_token", token);
+      localStorage.setItem("cb_user_profile", JSON.stringify(profile));
+    } catch {}
+
+    return profile;
+  };
+
+  const loginWithGoogle = (account?: {
+    name?: string;
+    email?: string;
+    avatar?: string;
+    role?: UserRole;
+    googleId?: string;
+  }): UserProfile => {
+    const role = account?.role || "seeker";
+    const defaultName = role === "owner" ? "Property Owner" : "Commuter";
+    const profile: UserProfile = {
+      name: account?.name || defaultName,
+      email: account?.email || (role === "owner" ? "owner@commutebuddy.in" : "seeker@commutebuddy.in"),
+      avatar:
+        account?.avatar ||
+        `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(account?.name || defaultName)}`,
+      role,
+      isLoggedIn: true,
+      authProvider: "google",
+      googleId: account?.googleId,
+    };
+
+    setUserRole(role);
+    setUserProfile(profile);
+
+    // Save profile to Supabase PostgreSQL database
+    supabaseProfiles.upsertProfile(profile);
+
+    // Fetch user bookmarks from Supabase
+    if (profile.email) {
+      supabaseSavedProperties.getSavedPropertyIds(profile.email).then((ids) => {
+        if (ids && ids.length) setSavedPropertyIds(ids);
+      });
+    }
+
+    try {
+      localStorage.setItem("cb_user_profile", JSON.stringify(profile));
+      localStorage.setItem("cb_auth_token", `session_${Date.now()}`);
+    } catch {}
+
+    return profile;
   };
 
   const loginWithGoogleDemo = (role: UserRole = "seeker") => {
-    setUserRole(role);
-    setUserProfile({
-      name: role === "owner" ? "Dr. Rajesh Mehta (Owner)" : "Vallabh Shingroop (Researcher)",
-      email: role === "owner" ? "rajesh.mehta@tgpcet.ac.in" : "vallabh@tgpcet.ac.in",
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200",
-      role,
-      isLoggedIn: true
-    });
+    loginWithGoogle({ role });
   };
 
   const logout = () => {
@@ -500,8 +524,13 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       email: "",
       avatar: "",
       role: "seeker",
-      isLoggedIn: false
+      isLoggedIn: false,
     });
+    setSavedPropertyIds([]);
+    try {
+      localStorage.removeItem("cb_user_profile");
+      localStorage.removeItem("cb_auth_token");
+    } catch {}
   };
 
   // -----------------------------------------------------------------
@@ -518,13 +547,11 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       const dh = getHaversineDistanceKm(workplace.lat, workplace.lng, p.lat, p.lng);
 
       // Line 5: Safe lower-bound pruning check (Line 5 - 7)
-      // If even straight-line travel at maximum mode speed is slower than budget, discard immediately
       if (dh / vmax > maxCommute) {
         continue; // Pruned in O(1)
       }
 
       // Line 8: Authoritative network travel-time calculation (Eq. 5)
-      // In production, queries OSRM contraction-hierarchy routing engine
       const estimatedMinutes = Math.max(1, Math.round(dh / speed));
 
       // Line 9: Network constraint check T <= Tmax
@@ -569,14 +596,46 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     return result.sort((a, b) => b.matchScore - a.matchScore);
   }, [rawProperties, workplace, transportMode, maxCommute, maxPrice, targetSqft, rankingWeights]);
 
-  // Filtered by auxiliary seeker filters (price & purpose)
+  // Filtered by auxiliary seeker filters (price, BHK, property type, furnishing, verified, purpose)
   const filteredProperties = useMemo(() => {
-    return properties.filter(p => {
-      const matchPurpose = !purpose || p.purpose === purpose || (purpose === "rent" && p.price < 100000);
-      const matchPrice = p.price <= maxPrice;
-      return matchPurpose && matchPrice;
+    let list = properties.filter((p) => {
+      // Purpose filter
+      const matchPurpose = !purpose || p.purpose === purpose || (purpose === "rent" && p.price < 500000);
+      // Price range filter
+      const matchPrice = p.price >= minPrice && p.price <= maxPrice;
+      // BHK filter
+      const matchBhk = selectedBhk === null || p.bedrooms === selectedBhk;
+      // Property type filter
+      const matchType = selectedPropertyType === null || p.type === selectedPropertyType;
+      // Furnishing filter
+      const matchFurnished = selectedFurnished === null || p.furnished === selectedFurnished;
+      // Verified filter
+      const matchVerified = !verifiedOnly || Boolean(p.verifiedBadge || p.reraId);
+
+      return matchPurpose && matchPrice && matchBhk && matchType && matchFurnished && matchVerified;
     });
-  }, [properties, purpose, maxPrice]);
+
+    // Sort by user preference
+    list = [...list].sort((a, b) => {
+      if (sortBy === "commute") return a.commuteMinutes - b.commuteMinutes;
+      if (sortBy === "price_asc") return a.price - b.price;
+      if (sortBy === "price_desc") return b.price - a.price;
+      if (sortBy === "livability") return b.livabilityScore - a.livabilityScore;
+      return b.matchScore - a.matchScore; // default: best match score
+    });
+
+    return list;
+  }, [
+    properties,
+    purpose,
+    minPrice,
+    maxPrice,
+    selectedBhk,
+    selectedPropertyType,
+    selectedFurnished,
+    verifiedOnly,
+    sortBy,
+  ]);
 
   // Fetch full turn-by-turn road route geometry via OSRM (Section XII & Eq. 7)
   const fetchRouteForProperty = async (property: Property) => {
@@ -637,42 +696,34 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     }
   }, [selectedPropertyId, workplace, transportMode]);
 
-  // Register property (Owner Module)
+  // Register property (Owner Module - Supabase Database Sync)
   const registerProperty = async (p: Omit<Property, "id">): Promise<Property> => {
     try {
-      const res = await fetch("http://localhost:3001/api/properties", {
+      const created = await supabaseProperties.createProperty(p, userProfile.email);
+      setRawProperties((prev) => [created, ...prev]);
+
+      // Also sync to backend memory cache
+      fetch("http://localhost:3001/api/properties", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(p)
-      });
-      if (res.ok) {
-        const created = await res.json();
-        const normalized: Property = {
-          ...p,
-          id: created.id,
-          lat: created.latitude || p.lat,
-          lng: created.longitude || p.lng,
-          image: p.image || "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800",
-          views: 1,
-          inquiries: 0
-        };
-        setRawProperties(prev => [normalized, ...prev]);
-        return normalized;
-      }
+        body: JSON.stringify(created),
+      }).catch(() => {});
+
+      return created;
     } catch {
-      // Local fallback
+      const maxId = rawProperties.length > 0 ? Math.max(...rawProperties.map((x) => x.id)) : 0;
+      const localProp: Property = { ...p, id: maxId + 1 };
+      setRawProperties((prev) => [localProp, ...prev]);
+      return localProp;
     }
-    const maxId = rawProperties.length > 0 ? Math.max(...rawProperties.map(x => x.id)) : 0;
-    const localProp: Property = { ...p, id: maxId + 1 };
-    setRawProperties(prev => [localProp, ...prev]);
-    return localProp;
   };
 
   const deleteProperty = async (id: number) => {
     try {
-      await fetch(`http://localhost:3001/api/properties/${id}`, { method: "DELETE" });
+      await supabaseProperties.deleteProperty(id);
+      fetch(`http://localhost:3001/api/properties/${id}`, { method: "DELETE" }).catch(() => {});
     } catch {}
-    setRawProperties(prev => prev.filter(p => p.id !== id));
+    setRawProperties((prev) => prev.filter((p) => p.id !== id));
   };
 
   return (
@@ -707,14 +758,32 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         registerProperty,
         deleteProperty,
         fetchRouteForProperty,
+        loginWithGoogle,
         loginWithGoogleDemo,
+        loginWithSession,
         logout,
         properties,
         filteredProperties,
         allRawProperties: rawProperties,
         refreshData,
         activeRoute,
-        isRouteLoading
+        isRouteLoading,
+        isWorkplaceLocked,
+        setIsWorkplaceLocked,
+        minPrice,
+        setMinPrice,
+        isPropertiesLoading,
+        fetchStatusMessage,
+        selectedBhk,
+        setSelectedBhk,
+        selectedPropertyType,
+        setSelectedPropertyType,
+        selectedFurnished,
+        setSelectedFurnished,
+        verifiedOnly,
+        setVerifiedOnly,
+        sortBy,
+        setSortBy,
       }}
     >
       {children}

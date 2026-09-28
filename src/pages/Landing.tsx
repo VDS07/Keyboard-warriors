@@ -3,27 +3,38 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Building2, UserCircle, Compass, Home, BookOpen, ShieldCheck } from "lucide-react";
+import { Building2, Compass, Home, ShieldCheck } from "lucide-react";
 import { useSearch } from "@/context/SearchContext";
-import { ResearchPaperModal } from "@/components/ResearchPaperModal";
+import { GoogleOAuthModal } from "@/components/auth/GoogleOAuthModal";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 
 export default function Landing() {
   const [step, setStep] = useState<"login" | "transition" | "role" | "zoomOut">("login");
-  const [paperModalOpen, setPaperModalOpen] = useState(false);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
   const navigate = useNavigate();
-  const { setUserRole, loginWithGoogleDemo } = useSearch();
+  const { setUserRole, loginWithGoogleDemo, loginWithSession, userProfile } = useSearch();
 
-  const handleLogin = (e: FormEvent) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
-    loginWithGoogleDemo("seeker");
+    try {
+      const res = await fetch("http://localhost:3001/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "commuter@commutebuddy.in", name: "Commuter", role: "seeker" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        loginWithSession(data.token, data.user);
+      }
+    } catch {
+      loginWithGoogleDemo("seeker");
+    }
     setStep("transition");
     setTimeout(() => setStep("role"), 800);
   };
 
   const handleGoogleOAuth = () => {
-    loginWithGoogleDemo("seeker");
-    setStep("transition");
-    setTimeout(() => setStep("role"), 800);
+    setShowGoogleModal(true);
   };
 
   const handleRoleSelect = (role: "seeker" | "owner") => {
@@ -51,7 +62,7 @@ export default function Landing() {
         <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px]" />
       </div>
 
-      {/* Top Research Badge & Citation Button */}
+      {/* Top Brand Badge */}
       <div className="absolute top-4 left-6 z-30 flex items-center gap-3">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-purple-600 flex items-center justify-center shadow-lg shadow-purple-600/30">
@@ -59,17 +70,14 @@ export default function Landing() {
           </div>
           <div>
             <span className="font-bold text-sm tracking-tight text-white block">Commute Buddy</span>
-            <span className="text-[10px] text-zinc-400">TGPCET Research CSE</span>
+            <span className="text-[10px] text-zinc-400">Smart Commute Discovery</span>
           </div>
         </div>
 
-        <button
-          onClick={() => setPaperModalOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-950/50 border border-purple-500/30 text-xs text-purple-300 hover:bg-purple-900/50 transition-colors"
-        >
-          <BookOpen className="w-3.5 h-3.5 text-purple-400" />
-          <span>Read Paper</span>
-        </button>
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-950/50 border border-purple-500/30 text-xs text-purple-300">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Live Network Routing</span>
+        </div>
       </div>
 
       {/* 1. Google OAuth 2.0 / Login Screen (Section VI) */}
@@ -95,20 +103,20 @@ export default function Landing() {
                  </p>
                </div>
 
-               {/* Section VI Google Sign-In RFC 6749 Flow */}
+               {/* Section VI Google Sign-In Official GIS Flow */}
                <div className="space-y-4 relative z-10">
-                 <button
-                   onClick={handleGoogleOAuth}
-                   className="w-full h-12 rounded-xl bg-white hover:bg-zinc-100 text-zinc-900 font-semibold text-sm flex items-center justify-center gap-2.5 transition-all shadow-lg active:scale-95"
-                 >
-                   <svg className="w-4 h-4" viewBox="0 0 24 24">
-                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                   </svg>
-                   <span>Sign in with Google OAuth 2.0</span>
-                 </button>
+                 <div className="w-full flex justify-center">
+                   <GoogleSignInButton
+                     role="seeker"
+                     text="continue_with"
+                     theme="outline"
+                     width={360}
+                     onSuccess={() => {
+                       setStep("transition");
+                       setTimeout(() => setStep("role"), 800);
+                     }}
+                   />
+                 </div>
 
                  <div className="relative my-4 flex items-center justify-center text-xs uppercase text-zinc-500">
                    <span className="w-full border-t border-white/10"></span>
@@ -116,17 +124,17 @@ export default function Landing() {
                  </div>
 
                  <form onSubmit={handleLogin} className="space-y-3">
-                   <Input required type="text" defaultValue="Vallabh Shingroop" placeholder="Name" className="bg-white/5 border-white/10 h-10 text-white text-xs placeholder:text-zinc-500 rounded-xl" />
-                   <Input required type="email" defaultValue="vallabh@tgpcet.ac.in" placeholder="Email" className="bg-white/5 border-white/10 h-10 text-white text-xs placeholder:text-zinc-500 rounded-xl" />
+                   <Input required type="text" placeholder="Full Name" className="bg-white/5 border-white/10 h-10 text-white text-xs placeholder:text-zinc-500 rounded-xl" />
+                   <Input required type="email" placeholder="name@example.com" className="bg-white/5 border-white/10 h-10 text-white text-xs placeholder:text-zinc-500 rounded-xl" />
                    
                    <Button type="submit" className="w-full h-11 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition-all active:scale-95 shadow-lg shadow-purple-600/30">
-                     Access Platform Session (RFC 6749)
+                     Sign In to Commute Buddy
                    </Button>
                  </form>
 
                  <div className="flex items-center gap-1.5 justify-center text-[10px] text-zinc-500 pt-1">
                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                   <span>OAuth 2.0 Authorization Code Flow • Zero Password Storage</span>
+                   <span>Secure Single Sign-On • Safe & Verified</span>
                  </div>
                </div>
             </div>
@@ -168,14 +176,14 @@ export default function Landing() {
               <div className="flex items-start justify-between mb-8">
                 <div>
                   <p className="text-[10px] uppercase tracking-widest font-bold text-purple-400 mb-1">
-                    Two-Sided Marketplace (Section VI)
+                    Welcome to Commute Buddy
                   </p>
                   <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white">
                     Choose Your Role
                   </h2>
                 </div>
                 <div className="bg-white/5 border border-white/10 rounded-full px-3 py-1 flex items-center gap-2">
-                  <span className="text-xs font-mono text-purple-300">vallabh@tgpcet.ac.in</span>
+                  <span className="text-xs font-mono text-purple-300">{userProfile.email || "commuter@commutebuddy.in"}</span>
                 </div>
               </div>
 
@@ -193,7 +201,7 @@ export default function Landing() {
                   </div>
                   <h3 className="text-2xl font-bold text-white mb-2">Home / Commute Seeker</h3>
                   <p className="text-xs text-zinc-400 leading-relaxed">
-                    Set your workplace anchor, define your commute time budget (T_max), and explore the full feasible set of properties with OSRM turn-by-turn road routes.
+                    Set your workplace anchor, define your maximum commute time, and discover matching homes with real-world turn-by-turn road routes.
                   </p>
                   <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-purple-300">
                     <span>Enter Live Map</span> →
@@ -211,7 +219,7 @@ export default function Landing() {
                   </div>
                   <h3 className="text-2xl font-bold text-white mb-2">Property Owner</h3>
                   <p className="text-xs text-zinc-400 leading-relaxed">
-                    Access the Owner Control Center, inspect commute-discovery distributions, receive seeker inquiries, and use Hedonic ML Smart Pricing.
+                    Access the Owner Control Center, inspect commute demand analytics, manage inquiries, and use AI Smart Pricing.
                   </p>
                   <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-indigo-300">
                     <span>Open Owner Center</span> →
@@ -221,13 +229,7 @@ export default function Landing() {
               </div>
 
               <div className="flex justify-between items-center pt-4 border-t border-white/10">
-                <button
-                  onClick={() => setPaperModalOpen(true)}
-                  className="text-xs text-zinc-400 hover:text-white flex items-center gap-1.5"
-                >
-                  <BookOpen className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Research Paper & System Architecture</span>
-                </button>
+                <span className="text-xs text-zinc-500 font-mono">Commute Buddy Pro • Smart Housing</span>
 
                 <button 
                   onClick={() => setStep("login")}
@@ -242,8 +244,15 @@ export default function Landing() {
         )}
       </AnimatePresence>
 
-      {/* Research Paper Modal */}
-      <ResearchPaperModal open={paperModalOpen} onClose={() => setPaperModalOpen(false)} />
+      {/* Google OAuth Modal */}
+      <GoogleOAuthModal
+        open={showGoogleModal}
+        onClose={() => setShowGoogleModal(false)}
+        onSuccess={() => {
+          setStep("transition");
+          setTimeout(() => setStep("role"), 800);
+        }}
+      />
     </main>
   );
 }
