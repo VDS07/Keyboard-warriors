@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useMemo, useEffect, ReactNode } from "react";
 import { supabaseProfiles, supabaseSavedProperties, supabaseProperties, isSupabaseConfigured } from "@/lib/supabase";
+import { API_BASE_URL } from "@/lib/api";
 
 export type TransportMode = "drive" | "transit" | "cycle" | "walk";
 export type UserRole = "seeker" | "owner";
@@ -300,7 +301,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     );
 
     try {
-      const url = `http://localhost:3001/api/properties?lat=${targetLat}&lng=${targetLng}&city=${encodeURIComponent(
+      const url = `${API_BASE_URL}/api/properties?lat=${targetLat}&lng=${targetLng}&city=${encodeURIComponent(
         city
       )}&area=${encodeURIComponent(area)}&purpose=${targetPurpose}`;
       const res = await fetch(url);
@@ -404,7 +405,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
             setUserRole(parsed.role || "seeker");
 
             // Verify with backend session endpoint
-            fetch("http://localhost:3001/api/auth/me", {
+            fetch(`${API_BASE_URL}/api/auth/me`, {
               headers: { Authorization: `Bearer ${token}` },
             })
               .then(async (r) => {
@@ -642,7 +643,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     setIsRouteLoading(true);
     try {
       const res = await fetch(
-        `http://localhost:3001/api/route?fromLat=${workplace.lat}&fromLng=${workplace.lng}&toLat=${property.lat}&toLng=${property.lng}&mode=${transportMode}`
+        `${API_BASE_URL}/api/route?fromLat=${workplace.lat}&fromLng=${workplace.lng}&toLat=${property.lat}&toLng=${property.lng}&mode=${transportMode}`
       );
       if (res.ok) {
         const data = await res.json();
@@ -703,7 +704,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       setRawProperties((prev) => [created, ...prev]);
 
       // Also sync to backend memory cache
-      fetch("http://localhost:3001/api/properties", {
+      fetch(`${API_BASE_URL}/api/properties`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(created),
@@ -721,7 +722,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const deleteProperty = async (id: number) => {
     try {
       await supabaseProperties.deleteProperty(id);
-      fetch(`http://localhost:3001/api/properties/${id}`, { method: "DELETE" }).catch(() => {});
+      fetch(`${API_BASE_URL}/api/properties/${id}`, { method: "DELETE" }).catch(() => {});
     } catch {}
     setRawProperties((prev) => prev.filter((p) => p.id !== id));
   };

@@ -25,8 +25,13 @@ const ALLOWED_ORIGINS = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    // allow requests with no origin (e.g. server-to-server or tests)
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+    // allow requests with no origin (e.g. server-to-server or tests) or *.vercel.app
+    if (
+      !origin ||
+      ALLOWED_ORIGINS.includes(origin) ||
+      origin.endsWith('.vercel.app') ||
+      (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL)
+    ) {
       callback(null, true);
     } else {
       callback(null, false);
@@ -694,17 +699,21 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, async () => {
-  console.log(`🚀 Commute Buddy Server running on http://localhost:${PORT}`);
-  console.log(`📡 Architecture: LIVE FETCH — No local data storage`);
-  console.log(`🔄 Properties are fetched on-demand from real estate portals`);
-  console.log(`⏱️  Cache TTL: ${CACHE_TTL_MS / 60000} minutes`);
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, async () => {
+    console.log(`🚀 Commute Buddy Server running on http://localhost:${PORT}`);
+    console.log(`📡 Architecture: LIVE FETCH — No local data storage`);
+    console.log(`🔄 Properties are fetched on-demand from real estate portals`);
+    console.log(`⏱️  Cache TTL: ${CACHE_TTL_MS / 60000} minutes`);
 
-  // Pre-warm cache with initial fetch
-  try {
-    await ensureFreshData('bengaluru', 'rent');
-  } catch (err) {
-    console.log(`⚠️  Initial fetch failed (will retry on first request): ${err.message}`);
-  }
-});
+    // Pre-warm cache with initial fetch
+    try {
+      await ensureFreshData('bengaluru', 'rent');
+    } catch (err) {
+      console.log(`⚠️  Initial fetch failed (will retry on first request): ${err.message}`);
+    }
+  });
+}
+
+export default app;

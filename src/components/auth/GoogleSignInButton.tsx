@@ -3,6 +3,7 @@ import { useSearch, UserRole } from "@/context/SearchContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ShieldAlert, ExternalLink, Loader2 } from "lucide-react";
+import { API_BASE_URL } from "@/lib/api";
 
 declare global {
   interface Window {
@@ -144,7 +145,7 @@ export function GoogleSignInButton({
     setIsLoading(true);
 
     try {
-      const res = await fetch("http://localhost:3001/api/auth/google", {
+      const res = await fetch(`${API_BASE_URL}/api/auth/google`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -216,7 +217,7 @@ export function GoogleSignInButton({
             <div className="space-y-1">
               <p className="font-semibold text-white">Google Client ID Setup Required</p>
               <p className="text-[11px] text-amber-300/90 leading-relaxed">
-                Add your Google Cloud OAuth Client ID to <code className="bg-black/40 px-1 py-0.5 rounded font-mono text-[10px]">.env</code>:
+                Add your Google Cloud OAuth Client ID to <code className="bg-black/40 px-1 py-0.5 rounded font-mono text-[10px]">.env</code> (or Vercel Environment Variables):
               </p>
               <pre className="bg-black/50 p-2 rounded-lg text-[10px] font-mono text-zinc-300 overflow-x-auto select-all">
                 VITE_GOOGLE_CLIENT_ID=your-id.apps.googleusercontent.com{"\n"}
@@ -225,7 +226,9 @@ export function GoogleSignInButton({
             </div>
           </div>
           <div className="flex items-center justify-between pt-1 border-t border-amber-500/20 text-[10px]">
-            <span className="text-zinc-400">Authorized Origin: http://localhost:8080</span>
+            <span className="text-zinc-400">
+              Authorized Origin: {typeof window !== "undefined" ? window.location.origin : "http://localhost:8080"}
+            </span>
             <a
               href="https://console.cloud.google.com/apis/credentials"
               target="_blank"

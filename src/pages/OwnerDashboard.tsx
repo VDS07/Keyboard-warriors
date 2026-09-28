@@ -9,6 +9,7 @@ import { Eye, MousePointerClick, TrendingUp, Building2, MapPin, AlertCircle, Plu
 import { Navbar } from "@/components/Navbar";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { API_BASE_URL } from "@/lib/api";
 
 type Property = {
   id: number;
@@ -53,7 +54,7 @@ export default function OwnerDashboard() {
   const fetchStats = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:3001/api/owner/stats");
+      const res = await fetch(`${API_BASE_URL}/api/owner/stats`);
       if (res.ok) {
         const data = await res.json();
         setStats(data);
@@ -83,7 +84,7 @@ export default function OwnerDashboard() {
   const handleDeleteProperty = async (id: number) => {
     if (!confirm("Are you sure you want to remove this property listing?")) return;
     try {
-      await fetch(`http://localhost:3001/api/properties/${id}`, { method: "DELETE" });
+      await fetch(`${API_BASE_URL}/api/properties/${id}`, { method: "DELETE" });
       toast.success("Listing removed successfully");
       fetchStats();
     } catch {
@@ -99,7 +100,7 @@ export default function OwnerDashboard() {
     setIsImporting(true);
     try {
       const parsed = JSON.parse(scraperJsonInput);
-      const res = await fetch("http://localhost:3001/api/scraper/import", {
+      const res = await fetch(`${API_BASE_URL}/api/scraper/import`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: parsed, source: "99acres-scraper" })

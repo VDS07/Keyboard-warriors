@@ -9,6 +9,7 @@ import { Mail, Lock, User, ArrowRight, ShieldCheck, Sparkles, CheckCircle2, Home
 import { useSearch, UserRole } from "@/context/SearchContext";
 import { GoogleOAuthModal } from "@/components/auth/GoogleOAuthModal";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { API_BASE_URL } from "@/lib/api";
 import { toast } from "sonner";
 
 export default function LoginPage() {
@@ -27,7 +28,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch("http://localhost:3001/api/auth/login", {
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

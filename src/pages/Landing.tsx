@@ -7,6 +7,7 @@ import { Building2, Compass, Home, ShieldCheck } from "lucide-react";
 import { useSearch } from "@/context/SearchContext";
 import { GoogleOAuthModal } from "@/components/auth/GoogleOAuthModal";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { API_BASE_URL } from "@/lib/api";
 
 export default function Landing() {
   const [step, setStep] = useState<"login" | "transition" | "role" | "zoomOut">("login");
@@ -17,7 +18,7 @@ export default function Landing() {
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("http://localhost:3001/api/auth/login", {
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: "commuter@commutebuddy.in", name: "Commuter", role: "seeker" }),
