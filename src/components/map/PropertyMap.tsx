@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { useSearch, SPEED_FACTORS, WorkplaceIcon } from "@/context/SearchContext";
-import { Building2, GraduationCap, Stethoscope, Briefcase, MapPin, Navigation } from "lucide-react";
+import { useSearch, SPEED_FACTORS, WorkplaceIcon, EnrichedProperty } from "@/context/SearchContext";
+import { Building2, GraduationCap, Stethoscope, Briefcase, MapPin, Navigation, Compass, Layers, Zap } from "lucide-react";
 
 type Workplace = {
   label: string;
@@ -10,19 +10,9 @@ type Workplace = {
   lng: number;
 };
 
-type PropertyMarker = {
-  id: number;
-  title: string;
-  price: number;
-  lat: number;
-  lng: number;
-  commuteMinutes: number;
-  distanceKm: number;
-};
-
 type PropertyMapProps = {
   workplace: Workplace;
-  properties: PropertyMarker[];
+  properties: EnrichedProperty[];
   focusedPropertyId: number | null;
   toCurrency: (price: number) => string;
   onPropertyFocus: (propertyId: number) => void;
@@ -34,29 +24,28 @@ export type MapViewMode = "normal" | "openmaps" | "satellite" | "hd";
 const CARTO_API_KEY = (import.meta.env.VITE_CARTO_API_KEY as string) || "cb1_2w7k_1_41073939576e71e4cdbd81fb";
 const cartoParam = CARTO_API_KEY ? `?api_key=${CARTO_API_KEY}` : "";
 
-// Map tile endpoints including CARTO with API key and OpenStreetMap (Open Maps)
 const TILE_SERVERS: Record<MapViewMode, { url: string; attribution: string; subdomains: string; maxZoom: number }> = {
   normal: {
     url: `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png${cartoParam}`,
-    attribution: "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors &copy; <a href='https://carto.com/attributions'>CARTO</a>",
+    attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
     subdomains: "abcd",
     maxZoom: 19,
   },
   openmaps: {
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution: "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors",
+    attribution: "&copy; OpenStreetMap contributors",
     subdomains: "abc",
     maxZoom: 19,
   },
   hd: {
     url: `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png${cartoParam}`,
-    attribution: "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors &copy; <a href='https://carto.com/attributions'>CARTO</a>",
+    attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
     subdomains: "abcd",
     maxZoom: 19,
   },
   satellite: {
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    attribution: "&copy; <a href='https://www.esri.com/'>Esri</a>",
+    attribution: "&copy; Esri",
     subdomains: "",
     maxZoom: 18,
   },
@@ -85,26 +74,25 @@ export const PropertyMap = ({
   onPropertyFocus,
   hideControls = false,
 }: PropertyMapProps) => {
-  const { setWorkplace, maxCommute, transportMode, workplaceIcon } = useSearch();
+  const { setWorkplace, maxCommute, transportMode, workplaceIcon, activeRoute, isRouteLoading, setSelectedPropertyId } = useSearch();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
-  const radiusCircleRef = useRef<L.Circle | null>(null);
-  const routePolylineRef = useRef<L.Polyline | null>(null);
+  const routeLayerRef = useRef<L.LayerGroup | null>(null);
 
   const [mapViewMode, setMapViewMode] = useState<MapViewMode>("normal");
   const [popupPropertyId, setPopupPropertyId] = useState<number | null>(null);
 
   const activeProperty = properties.find((p) => p.id === focusedPropertyId) || properties.find((p) => p.id === popupPropertyId);
 
-  // Calculate time radius in km
+  // Time radius in km (speed bound buffer)
   const timeRadiusKm = useMemo(() => {
-    return maxCommute * (SPEED_FACTORS[transportMode] || 0.35);
+    return maxCommute * (SPEED_FACTORS[transportMode] || 0.45);
   }, [maxCommute, transportMode]);
 
-  // Initialize Leaflet Map once
+  // Initialize Leaflet Map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
@@ -127,15 +115,35 @@ export const PropertyMap = ({
 
     tileLayerRef.current = tileLayer;
 
+    // Route layer below markers
+    const routeGroup = L.layerGroup().addTo(map);
+    routeLayerRef.current = routeGroup;
+
+    // Markers layer
     const markersGroup = L.layerGroup().addTo(map);
     markersLayerRef.current = markersGroup;
 
-    // Handle map click to pick workplace location
-    map.on("click", (e: L.LeafletMouseEvent) => {
+    // Reverse-geocode map-click to set Workplace Anchor (Section VIII)
+    map.on("click", async (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+        if (res.ok) {
+          const data = await res.json();
+          setWorkplace({
+            label: data.display_name ? data.display_name.split(",").slice(0, 3).join(",") : `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`,
+            lat,
+            lng,
+          });
+          return;
+        }
+      } catch {
+        // Fallback
+      }
       setWorkplace({
-        label: "Selected Location",
-        lat: e.latlng.lat,
-        lng: e.latlng.lng,
+        label: `Workplace (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+        lat,
+        lng,
       });
     });
 
@@ -143,7 +151,7 @@ export const PropertyMap = ({
 
     const timer = setTimeout(() => {
       map.invalidateSize();
-    }, 200);
+    }, 250);
 
     const handleResize = () => {
       map.invalidateSize();
@@ -186,31 +194,31 @@ export const PropertyMap = ({
     if (!mapRef.current || !focusedPropertyId) return;
     const focused = properties.find((p) => p.id === focusedPropertyId);
     if (focused) {
-      mapRef.current.flyTo([focused.lat, focused.lng], 15, {
-        duration: 1.0,
+      mapRef.current.flyTo([focused.lat, focused.lng], 14, {
+        duration: 0.8,
       });
     }
   }, [focusedPropertyId, properties]);
 
-  // Render Workplace Marker, Commute Radius, Properties & Route Lines
+  // Render Workplace Marker, Commute Radius & Property Markers
   useEffect(() => {
     if (!mapRef.current || !markersLayerRef.current) return;
 
     const group = markersLayerRef.current;
     group.clearLayers();
 
-    // 1. Commute Radius Circle
+    // 1. Commute Reachable Envelope Buffer (Isochrone Approximation)
     const radiusMeters = timeRadiusKm * 1000;
-    const circle = L.circle([workplace.lat, workplace.lng], {
+    L.circle([workplace.lat, workplace.lng], {
       radius: radiusMeters,
       color: "#a855f7",
       fillColor: "#a855f7",
-      fillOpacity: 0.15,
+      fillOpacity: 0.12,
       weight: 2,
-      dashArray: "4, 4",
+      dashArray: "5, 5",
     }).addTo(group);
-    radiusCircleRef.current = circle;
 
+    // 2. Pulsing Workplace Anchor Marker (Section VIII)
     const workplaceIconHtml = `
       <div class="relative flex items-center justify-center pointer-events-auto">
         <div class="absolute -inset-3 bg-purple-500/30 rounded-full animate-ping"></div>
@@ -229,23 +237,29 @@ export const PropertyMap = ({
     });
 
     const wpMarker = L.marker([workplace.lat, workplace.lng], { icon: wpIcon }).addTo(group);
-    wpMarker.bindPopup(`<div class="p-1 font-semibold text-xs text-white">Workplace Anchor: ${workplace.label}</div>`, {
+    wpMarker.bindPopup(`
+      <div class="p-1.5 font-sans">
+        <div class="text-[10px] uppercase font-bold text-purple-400">Workplace Anchor (W)</div>
+        <div class="font-bold text-xs text-white">${workplace.label}</div>
+        <div class="text-[10px] text-zinc-400 mt-1">Origin for all commute time calculations (Eq. 2)</div>
+      </div>
+    `, {
       className: "leaflet-dark-popup",
     });
 
-    // 3. Property Markers
+    // 3. Property Markers (Feasible Set R per Eq. 3)
     properties.forEach((property) => {
       const isFocused = property.id === focusedPropertyId;
 
       const markerHtml = `
         <div class="relative flex items-center justify-center cursor-pointer transition-transform duration-200 hover:scale-125">
-          <div className="rounded-full border shadow-lg" style="
-            width: ${isFocused ? "20px" : "14px"};
-            height: ${isFocused ? "20px" : "14px"};
+          <div style="
+            width: ${isFocused ? "24px" : "16px"};
+            height: ${isFocused ? "24px" : "16px"};
             background-color: ${isFocused ? "#ec4899" : "#a855f7"};
             border: 2px solid white;
             border-radius: 9999px;
-            box-shadow: ${isFocused ? "0 0 16px rgba(236,72,153,0.9)" : "0 0 10px rgba(168,85,247,0.7)"};
+            box-shadow: ${isFocused ? "0 0 20px rgba(236,72,153,0.95)" : "0 0 10px rgba(168,85,247,0.7)"};
           "></div>
         </div>
       `;
@@ -253,17 +267,25 @@ export const PropertyMap = ({
       const pIcon = L.divIcon({
         html: markerHtml,
         className: "custom-property-marker",
-        iconSize: [20, 20],
-        iconAnchor: [10, 10],
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
       });
 
       const pMarker = L.marker([property.lat, property.lng], { icon: pIcon }).addTo(group);
 
       const popupHtml = `
-        <div class="space-y-1 text-xs text-white p-1">
-          <p class="font-bold text-sm text-purple-300">${property.title}</p>
-          <p class="font-semibold text-pink-400">${toCurrency(property.price)}</p>
-          <p class="text-zinc-300">⏱️ ${property.commuteMinutes} min commute (${property.distanceKm.toFixed(1)} km)</p>
+        <div class="space-y-1.5 text-xs text-white p-1 font-sans">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-bold text-sm text-purple-300">${property.title}</span>
+            <span class="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded font-mono font-bold">${property.matchScore}% Match</span>
+          </div>
+          <div class="font-bold text-pink-400 text-sm">${toCurrency(property.price)}/mo</div>
+          <div class="text-zinc-300 flex items-center gap-1.5">
+            <span>⏱️ <strong>${property.commuteMinutes} min</strong></span>
+            <span>•</span>
+            <span>🛣️ ${property.distanceKm.toFixed(1)} km</span>
+          </div>
+          <div class="text-[10px] text-zinc-400">Click to view turn-by-turn road route (Eq. 7)</div>
         </div>
       `;
 
@@ -271,46 +293,73 @@ export const PropertyMap = ({
 
       pMarker.on("click", () => {
         onPropertyFocus(property.id);
+        setSelectedPropertyId(property.id);
         setPopupPropertyId(property.id);
       });
     });
+  }, [workplace, properties, focusedPropertyId, popupPropertyId, timeRadiusKm, workplaceIcon]);
 
-    // 4. Shortest Path Route Line if active property selected
-    if (activeProperty) {
-      const routePolyline = L.polyline(
-        [
-          [workplace.lat, workplace.lng],
-          [activeProperty.lat, activeProperty.lng],
-        ],
-        {
-          color: "#ec4899",
-          weight: 4,
-          dashArray: "6, 6",
-          opacity: 0.9,
-        }
-      ).addTo(group);
-      routePolylineRef.current = routePolyline;
+  // -----------------------------------------------------------------
+  // Render OSRM Road Route Geometry Polyline (Section XII & Eq. 7)
+  // -----------------------------------------------------------------
+  useEffect(() => {
+    if (!mapRef.current || !routeLayerRef.current) return;
 
-      // Midpoint distance badge
-      const midLat = (workplace.lat + activeProperty.lat) / 2;
-      const midLng = (workplace.lng + activeProperty.lng) / 2;
+    const group = routeLayerRef.current;
+    group.clearLayers();
 
-      const badgeHtml = `
-        <div class="bg-black/90 text-purple-300 border border-purple-500/40 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-xl flex items-center gap-1 backdrop-blur-md whitespace-nowrap">
-          ⚡ ${activeProperty.distanceKm.toFixed(1)} km (${activeProperty.commuteMinutes} min)
-        </div>
-      `;
+    if (activeRoute && activeRoute.coordinates && activeRoute.coordinates.length > 1) {
+      // 1. Glowing background stroke
+      L.polyline(activeRoute.coordinates, {
+        color: "#a855f7",
+        weight: 8,
+        opacity: 0.35,
+        lineCap: "round",
+        lineJoin: "round",
+      }).addTo(group);
 
-      const badgeIcon = L.divIcon({
-        html: badgeHtml,
-        className: "route-midpoint-badge",
-        iconSize: [120, 24],
-        iconAnchor: [60, 12],
+      // 2. High-precision foreground route path
+      const routeLine = L.polyline(activeRoute.coordinates, {
+        color: "#ec4899",
+        weight: 4,
+        opacity: 0.95,
+        lineCap: "round",
+        lineJoin: "round",
+      }).addTo(group);
+
+      // 3. Midpoint floating route badge
+      const midIndex = Math.floor(activeRoute.coordinates.length / 2);
+      const midCoord = activeRoute.coordinates[midIndex];
+
+      if (midCoord) {
+        const badgeHtml = `
+          <div class="bg-black/95 text-purple-300 border border-purple-500/60 px-2.5 py-1 rounded-full text-[11px] font-bold shadow-2xl flex items-center gap-1.5 backdrop-blur-xl whitespace-nowrap animate-pulse">
+            <span class="text-pink-400">🛣️</span>
+            <span>${activeRoute.distanceKm.toFixed(1)} km</span>
+            <span>•</span>
+            <span class="text-white">${activeRoute.durationMinutes} min (${transportMode})</span>
+          </div>
+        `;
+
+        const badgeIcon = L.divIcon({
+          html: badgeHtml,
+          className: "route-midpoint-badge",
+          iconSize: [160, 28],
+          iconAnchor: [80, 14],
+        });
+
+        L.marker(midCoord, { icon: badgeIcon, interactive: false }).addTo(group);
+      }
+
+      // Fit map bounds smoothly around route
+      mapRef.current.fitBounds(routeLine.getBounds(), {
+        padding: [60, 60],
+        maxZoom: 15,
+        animate: true,
+        duration: 0.9,
       });
-
-      L.marker([midLat, midLng], { icon: badgeIcon, interactive: false }).addTo(group);
     }
-  }, [workplace, properties, focusedPropertyId, popupPropertyId, timeRadiusKm, workplaceIcon, activeProperty]);
+  }, [activeRoute, transportMode]);
 
   // Zoom In / Out Handlers
   const handleZoom = (delta: number) => {
@@ -330,24 +379,21 @@ export const PropertyMap = ({
       {/* Dark Leaflet Popup Styling Override */}
       <style>{`
         .leaflet-dark-popup .leaflet-popup-content-wrapper {
-          background: rgba(9, 9, 11, 0.92) !important;
-          backdrop-filter: blur(16px) !important;
-          border: 1px solid rgba(168, 85, 247, 0.4) !important;
-          border-radius: 16px !important;
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.7) !important;
+          background: rgba(9, 9, 11, 0.94) !important;
+          backdrop-filter: blur(20px) !important;
+          border: 1px solid rgba(168, 85, 247, 0.5) !important;
+          border-radius: 18px !important;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85) !important;
           color: white !important;
         }
         .leaflet-dark-popup .leaflet-popup-tip {
-          background: rgba(9, 9, 11, 0.92) !important;
-          border: 1px solid rgba(168, 85, 247, 0.4) !important;
+          background: rgba(9, 9, 11, 0.94) !important;
+          border: 1px solid rgba(168, 85, 247, 0.5) !important;
         }
         .leaflet-dark-popup .leaflet-popup-close-button {
           color: rgba(255, 255, 255, 0.7) !important;
           font-size: 16px !important;
           padding: 6px 8px 0 0 !important;
-        }
-        .leaflet-dark-popup .leaflet-popup-close-button:hover {
-          color: white !important;
         }
         .leaflet-container {
           background: #09090b !important;
@@ -359,7 +405,7 @@ export const PropertyMap = ({
       {!hideControls && (
         <>
           {/* Zoom Controls */}
-          <div className="pointer-events-auto absolute bottom-5 right-5 z-[600] flex flex-col gap-2">
+          <div className="pointer-events-auto absolute bottom-6 right-6 z-[500] flex flex-col gap-2">
             <button
               type="button"
               aria-label="Zoom in"
@@ -378,27 +424,30 @@ export const PropertyMap = ({
             </button>
           </div>
 
-          {/* Map Style Toggle */}
-          <div className="pointer-events-auto absolute bottom-5 left-5 z-[600] flex rounded-full bg-black/80 backdrop-blur-xl border border-white/20 shadow-2xl overflow-hidden p-0.5">
-            {[
-              { key: "normal" as MapViewMode, label: "Dark (Carto)", emoji: "🌙" },
-              { key: "openmaps" as MapViewMode, label: "Open Maps", emoji: "🗺️" },
-              { key: "hd" as MapViewMode, label: "Voyager (Carto)", emoji: "🏙️" },
-              { key: "satellite" as MapViewMode, label: "Satellite", emoji: "🛰️" },
-            ].map(({ key, label, emoji }) => (
+          {/* Map Layer Switcher (Section XVII) */}
+          <div className="pointer-events-auto absolute bottom-6 left-6 z-[500] flex items-center gap-1.5 p-1 rounded-full bg-black/80 border border-white/10 backdrop-blur-xl shadow-2xl">
+            {(["normal", "openmaps", "hd", "satellite"] as MapViewMode[]).map((mode) => (
               <button
-                key={key}
-                onClick={() => setMapViewMode(key)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                  mapViewMode === key
-                    ? "bg-purple-600 text-white shadow-md"
-                    : "text-white/70 hover:text-white hover:bg-white/10"
+                key={mode}
+                onClick={() => setMapViewMode(mode)}
+                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all capitalize ${
+                  mapViewMode === mode
+                    ? "bg-purple-600 text-white shadow-md shadow-purple-600/30"
+                    : "text-zinc-400 hover:text-white hover:bg-white/5"
                 }`}
               >
-                {emoji} {label}
+                {mode === "normal" ? "Dark Carto" : mode === "openmaps" ? "OSM" : mode === "hd" ? "Voyager" : "Satellite"}
               </button>
             ))}
           </div>
+
+          {/* Route Computing Spinner */}
+          {isRouteLoading && (
+            <div className="pointer-events-none absolute top-28 left-1/2 -translate-x-1/2 z-[500] flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/90 border border-purple-500/50 text-xs text-purple-300 shadow-2xl backdrop-blur-md animate-pulse">
+              <Compass className="w-3.5 h-3.5 animate-spin text-purple-400" />
+              <span>Computing OSRM Shortest Path...</span>
+            </div>
+          )}
         </>
       )}
     </div>

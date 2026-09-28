@@ -1,4 +1,5 @@
 import { useSearch } from "@/context/SearchContext";
+import { Navbar } from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, DollarSign, Star, MapPin } from "lucide-react";
@@ -46,8 +47,9 @@ export default function Dashboard() {
   }, {});
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-6 md:p-10">
-      <div className="max-w-5xl mx-auto space-y-8">
+    <div className="min-h-screen bg-zinc-950 text-white font-sans flex flex-col">
+      <Navbar />
+      <div className="flex-1 p-6 md:p-10 max-w-5xl mx-auto w-full space-y-8">
 
         {/* Header */}
         <div className="flex justify-between items-center">

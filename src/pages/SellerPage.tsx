@@ -80,8 +80,8 @@ export default function SellerPage() {
     setPropertyImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handlePublish = () => {
-    registerProperty({
+  const handlePublish = async () => {
+    await registerProperty({
       title: `${formData.bedrooms} BHK ${formData.type.charAt(0).toUpperCase() + formData.type.slice(1)} in ${formData.city}`,
       price: Number(formData.price) || 25000,
       lat: mapCenter.lat,
@@ -89,20 +89,21 @@ export default function SellerPage() {
       bedrooms: Number(formData.bedrooms),
       bathrooms: Number(formData.bathrooms),
       sqft: Number(formData.sqft) || 1200,
-      image: propertyImages[0] || "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400",
+      image: propertyImages[0] || "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800",
       type: formData.type,
       livabilityScore: 85,
       petFriendly: formData.petFriendly === "yes",
       furnished: formData.furnished,
-      description: formData.description || `Beautiful ${formData.type} with great amenities.`,
+      description: formData.description || `Spacious and well-connected ${formData.type} in ${formData.city}.`,
       city: formData.city,
-      contactName: formData.contactName,
-      contactPhone: formData.contactPhone,
-      contactEmail: formData.contactEmail,
+      contactName: formData.contactName || "Property Owner",
+      contactPhone: formData.contactPhone || "+91-9876543210",
+      contactEmail: formData.contactEmail || "owner@commutebuddy.in",
     });
 
-    setUserRole("buyer"); // Switch to buyer to see the map
-    navigate("/");
+    toast.success("Property published successfully to Commute Buddy!");
+    setUserRole("seeker");
+    navigate("/map");
   };
 
   const stepColors = {

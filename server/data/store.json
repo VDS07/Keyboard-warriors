@@ -1,0 +1,518 @@
+{
+  "properties": [
+    {
+      "title": "Test Scraped Apartment",
+      "description": "Verified listing scraped from 99acres. 2 BHK spacious property with top connectivity.",
+      "price": 24000,
+      "property_type": "apartment",
+      "purpose": "rent",
+      "bedrooms": 2,
+      "bathrooms": 2,
+      "sqft": 1000,
+      "latitude": 21.15,
+      "longitude": 79.08,
+      "address": "Nagpur",
+      "city": "Nagpur",
+      "amenities": [
+        "Lift",
+        "Security",
+        "Parking",
+        "Water Storage",
+        "Power Backup"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600",
+        "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600"
+      ],
+      "livability_score": 85,
+      "pet_friendly": true,
+      "furnished": "semi-furnished",
+      "source_portal": "99acres",
+      "source_url": null,
+      "status": "active",
+      "owner": "Verified Seller",
+      "phone": "+91-9876543210",
+      "id": 11
+    },
+    {
+      "id": 1,
+      "owner_id": 101,
+      "title": "Dharampeth Heritage 3BHK Flat",
+      "description": "Prestigious residence in the heart of Dharampeth. Premium modular kitchen, balcony overlooking Law College square, 24/7 water and metro connectivity.",
+      "price": 22000,
+      "recommendedPrice": 24500,
+      "property_type": "apartment",
+      "purpose": "rent",
+      "bedrooms": 3,
+      "bathrooms": 2,
+      "sqft": 1350,
+      "latitude": 21.1442,
+      "longitude": 79.0658,
+      "address": "West High Court Road, Dharampeth",
+      "city": "Nagpur",
+      "amenities": [
+        "Metro Access",
+        "Covered Parking",
+        "Lift",
+        "Power Backup",
+        "Security"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800",
+        "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800"
+      ],
+      "livability_score": 92,
+      "pet_friendly": true,
+      "furnished": "furnished",
+      "source_portal": "99acres",
+      "source_url": "https://www.99acres.com/sample-nagpur-1",
+      "status": "active",
+      "owner": "Dr. Rajesh Mehta",
+      "phone": "+91-9876543210",
+      "views": 412,
+      "inquiries": 38,
+      "commute_discoveries": {
+        "under10": 18,
+        "10to20": 45,
+        "20to30": 22,
+        "over30": 6
+      }
+    },
+    {
+      "id": 2,
+      "owner_id": 102,
+      "title": "Sadar Residency Studio Suite",
+      "description": "Modern studio suite next to Sadar Cantonment and Residency Road. Ideal for young professionals working in central government offices and IT hubs.",
+      "price": 13500,
+      "recommendedPrice": 15000,
+      "property_type": "studio",
+      "purpose": "rent",
+      "bedrooms": 1,
+      "bathrooms": 1,
+      "sqft": 520,
+      "latitude": 21.161,
+      "longitude": 79.0825,
+      "address": "Residency Road, Sadar",
+      "city": "Nagpur",
+      "amenities": [
+        "WiFi",
+        "Air Conditioning",
+        "Security Guard",
+        "24/7 Water"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800"
+      ],
+      "livability_score": 84,
+      "pet_friendly": false,
+      "furnished": "furnished",
+      "source_portal": "MagicBricks",
+      "source_url": "https://www.magicbricks.com/sample-nagpur-2",
+      "status": "active",
+      "owner": "Priya Deshmukh",
+      "phone": "+91-9123456789",
+      "views": 280,
+      "inquiries": 24,
+      "commute_discoveries": {
+        "under10": 25,
+        "10to20": 30,
+        "20to30": 12,
+        "over30": 3
+      }
+    },
+    {
+      "id": 3,
+      "owner_id": 103,
+      "title": "Civil Lines Executive Villa",
+      "description": "Stately independent bungalow in VIP Civil Lines corridor. Lush garden lawn, solar heating, high-grade security, minutes from High Court and Vidhan Bhavan.",
+      "price": 52000,
+      "recommendedPrice": 58000,
+      "property_type": "villa",
+      "purpose": "rent",
+      "bedrooms": 4,
+      "bathrooms": 4,
+      "sqft": 2800,
+      "latitude": 21.155,
+      "longitude": 79.072,
+      "address": "Near High Court, Civil Lines",
+      "city": "Nagpur",
+      "amenities": [
+        "Private Garden",
+        "Servant Quarters",
+        "3 Car Parking",
+        "Gated Security",
+        "EV Charger"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800",
+        "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800"
+      ],
+      "livability_score": 96,
+      "pet_friendly": true,
+      "furnished": "semi-furnished",
+      "source_portal": "99acres",
+      "source_url": "https://www.99acres.com/sample-nagpur-3",
+      "status": "active",
+      "owner": "Col. Anil Wankhede",
+      "phone": "+91-9988776655",
+      "views": 680,
+      "inquiries": 85,
+      "commute_discoveries": {
+        "under10": 32,
+        "10to20": 60,
+        "20to30": 19,
+        "over30": 4
+      }
+    },
+    {
+      "id": 4,
+      "owner_id": 104,
+      "title": "Trimurti Nagar Smart 2BHK",
+      "description": "Vibrant apartment near Ring Road and Trimurti Nagar square. Rapid access to VNIT, Hingna industrial zone, and MIHAN SEZ.",
+      "price": 18500,
+      "recommendedPrice": 20000,
+      "property_type": "apartment",
+      "purpose": "rent",
+      "bedrooms": 2,
+      "bathrooms": 2,
+      "sqft": 1050,
+      "latitude": 21.1215,
+      "longitude": 79.049,
+      "address": "Ring Road, Trimurti Nagar",
+      "city": "Nagpur",
+      "amenities": [
+        "Gym",
+        "Intercom",
+        "Elevator",
+        "Children Play Area"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800"
+      ],
+      "livability_score": 87,
+      "pet_friendly": true,
+      "furnished": "semi-furnished",
+      "source_portal": "NoBroker",
+      "source_url": "https://www.nobroker.in/sample-nagpur-4",
+      "status": "active",
+      "owner": "Sunita Borkar",
+      "phone": "+91-7766554433",
+      "views": 390,
+      "inquiries": 42,
+      "commute_discoveries": {
+        "under10": 12,
+        "10to20": 48,
+        "20to30": 34,
+        "over30": 10
+      }
+    },
+    {
+      "id": 5,
+      "owner_id": 105,
+      "title": "Wardha Road Tech Corridor 2BHK",
+      "description": "Close to MIHAN Tech Park and Airport Metro station. Fast commuting along NH-44 for TCS, Infosys, and AIIMS professionals.",
+      "price": 21000,
+      "recommendedPrice": 22500,
+      "property_type": "apartment",
+      "purpose": "rent",
+      "bedrooms": 2,
+      "bathrooms": 2,
+      "sqft": 1180,
+      "latitude": 21.085,
+      "longitude": 79.062,
+      "address": "Wardha Road, Near Airport",
+      "city": "Nagpur",
+      "amenities": [
+        "Swimming Pool",
+        "Clubhouse",
+        "Metro Feeder",
+        "Piped Gas"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800"
+      ],
+      "livability_score": 89,
+      "pet_friendly": false,
+      "furnished": "furnished",
+      "source_portal": "99acres",
+      "source_url": "https://www.99acres.com/sample-nagpur-5",
+      "status": "active",
+      "owner": "Nikhil Joshi",
+      "phone": "+91-9822334455",
+      "views": 520,
+      "inquiries": 56,
+      "commute_discoveries": {
+        "under10": 20,
+        "10to20": 55,
+        "20to30": 30,
+        "over30": 8
+      }
+    },
+    {
+      "id": 6,
+      "owner_id": 106,
+      "title": "Bandra West Sea-Facing Apartment",
+      "description": "High-floor flat near Bandstand and Carter Road. Breath-taking sunset views and quick link to BKC via Western Express Highway.",
+      "price": 95000,
+      "recommendedPrice": 92000,
+      "property_type": "apartment",
+      "purpose": "rent",
+      "bedrooms": 3,
+      "bathrooms": 3,
+      "sqft": 1650,
+      "latitude": 19.0596,
+      "longitude": 72.8295,
+      "address": "Near Bandstand, Bandra West",
+      "city": "Mumbai",
+      "amenities": [
+        "Sea View",
+        "Concierge",
+        "High Speed Lifts",
+        "Valet Parking",
+        "Clubhouse"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800"
+      ],
+      "livability_score": 95,
+      "pet_friendly": true,
+      "furnished": "furnished",
+      "source_portal": "99acres",
+      "source_url": "https://www.99acres.com/mumbai-bandra",
+      "status": "active",
+      "owner": "Meera Kapoor",
+      "phone": "+91-9845671234",
+      "views": 920,
+      "inquiries": 140,
+      "commute_discoveries": {
+        "under10": 30,
+        "10to20": 70,
+        "20to30": 45,
+        "over30": 15
+      }
+    },
+    {
+      "id": 7,
+      "owner_id": 107,
+      "title": "Andheri East Metro Link 1BHK",
+      "description": "Compact modern flat 2 minutes from Western Express Highway Metro. Direct transit line to BKC and Ghatkopar.",
+      "price": 36000,
+      "recommendedPrice": 38500,
+      "property_type": "apartment",
+      "purpose": "rent",
+      "bedrooms": 1,
+      "bathrooms": 1,
+      "sqft": 620,
+      "latitude": 19.1136,
+      "longitude": 72.8697,
+      "address": "WEH Metro Junction, Andheri East",
+      "city": "Mumbai",
+      "amenities": [
+        "Metro Connected",
+        "CCTV",
+        "Piped Gas",
+        "Lift"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800"
+      ],
+      "livability_score": 83,
+      "pet_friendly": false,
+      "furnished": "semi-furnished",
+      "source_portal": "MagicBricks",
+      "source_url": "https://www.magicbricks.com/mumbai-andheri",
+      "status": "active",
+      "owner": "Vikram Shah",
+      "phone": "+91-9876123456",
+      "views": 610,
+      "inquiries": 74,
+      "commute_discoveries": {
+        "under10": 40,
+        "10to20": 85,
+        "20to30": 25,
+        "over30": 6
+      }
+    },
+    {
+      "id": 8,
+      "owner_id": 108,
+      "title": "Koramangala 4th Block Duplex",
+      "description": "Lush residential duplex walking distance from tech incubators, cafes, and Sony World signal. High commute connectivity to Silk Board and Bellandur.",
+      "price": 48000,
+      "recommendedPrice": 51000,
+      "property_type": "duplex",
+      "purpose": "rent",
+      "bedrooms": 3,
+      "bathrooms": 3,
+      "sqft": 1850,
+      "latitude": 12.9345,
+      "longitude": 77.6265,
+      "address": "4th Block, Koramangala",
+      "city": "Bangalore",
+      "amenities": [
+        "Private Terrace",
+        "Covered Car Park",
+        "Solar Water",
+        "Pet Friendly"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800"
+      ],
+      "livability_score": 93,
+      "pet_friendly": true,
+      "furnished": "furnished",
+      "source_portal": "99acres",
+      "source_url": "https://www.99acres.com/bangalore-koramangala",
+      "status": "active",
+      "owner": "Arjun Rao",
+      "phone": "+91-9845612345",
+      "views": 740,
+      "inquiries": 95,
+      "commute_discoveries": {
+        "under10": 35,
+        "10to20": 65,
+        "20to30": 30,
+        "over30": 12
+      }
+    },
+    {
+      "id": 9,
+      "owner_id": 109,
+      "title": "Koregaon Park Green View 2BHK",
+      "description": "Quiet green neighborhood on Lane 5. 10 minutes to Pune Railway Station and Kalyani Nagar IT corridor.",
+      "price": 32000,
+      "recommendedPrice": 34000,
+      "property_type": "apartment",
+      "purpose": "rent",
+      "bedrooms": 2,
+      "bathrooms": 2,
+      "sqft": 1150,
+      "latitude": 18.5362,
+      "longitude": 73.8948,
+      "address": "Lane 5, Koregaon Park",
+      "city": "Pune",
+      "amenities": [
+        "Gym",
+        "Covered Parking",
+        "Security",
+        "Garden"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800"
+      ],
+      "livability_score": 91,
+      "pet_friendly": true,
+      "furnished": "furnished",
+      "source_portal": "Makaan",
+      "source_url": "https://www.makaan.com/pune-kp",
+      "status": "active",
+      "owner": "Manish Patil",
+      "phone": "+91-9876509876",
+      "views": 460,
+      "inquiries": 52,
+      "commute_discoveries": {
+        "under10": 22,
+        "10to20": 58,
+        "20to30": 26,
+        "over30": 5
+      }
+    },
+    {
+      "id": 10,
+      "owner_id": 110,
+      "title": "DLF Cyber City Executive Apartment",
+      "description": "Opposite Cyber Hub Gurugram. Direct walkway access to Rapid Metro and multinational headquarters.",
+      "price": 45000,
+      "recommendedPrice": 47000,
+      "property_type": "apartment",
+      "purpose": "rent",
+      "bedrooms": 2,
+      "bathrooms": 2,
+      "sqft": 1250,
+      "latitude": 28.495,
+      "longitude": 77.0878,
+      "address": "Phase 2, DLF Cyber City",
+      "city": "Gurugram",
+      "amenities": [
+        "Rapid Metro Access",
+        "Swimming Pool",
+        "24/7 Power",
+        "Club"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800"
+      ],
+      "livability_score": 90,
+      "pet_friendly": false,
+      "furnished": "furnished",
+      "source_portal": "99acres",
+      "source_url": "https://www.99acres.com/delhi-cybercity",
+      "status": "active",
+      "owner": "Rohit Aggarwal",
+      "phone": "+91-9845679012",
+      "views": 580,
+      "inquiries": 70,
+      "commute_discoveries": {
+        "under10": 45,
+        "10to20": 60,
+        "20to30": 20,
+        "over30": 4
+      }
+    }
+  ],
+  "users": [
+    {
+      "id": 1,
+      "name": "Student Commuter",
+      "email": "seeker@commutebuddy.in",
+      "role": "seeker"
+    },
+    {
+      "id": 101,
+      "name": "Dr. Rajesh Mehta",
+      "email": "rajesh.mehta@gmail.com",
+      "role": "owner"
+    }
+  ],
+  "inquiries": [
+    {
+      "id": 1,
+      "property_id": 1,
+      "user_id": 1,
+      "seeker_name": "Vallabh Shingroop",
+      "seeker_phone": "+91-9876540001",
+      "seeker_email": "vallabh@commutebuddy.org",
+      "message": "Hello! I am a student/researcher looking for a 3BHK flat near Law College Square. Is this property available for viewing this weekend?",
+      "preferred_date": "2026-10-05",
+      "preferred_time_slot": "11:00 AM - 1:00 PM",
+      "status": "pending",
+      "created_at": "2026-09-28T10:47:47.786Z"
+    }
+  ],
+  "bookings": [
+    {
+      "id": 1,
+      "inquiry_id": 1,
+      "property_id": 1,
+      "user_id": 1,
+      "booking_date": "2026-10-05",
+      "time_slot": "11:00 AM",
+      "status": "confirmed",
+      "notes": "On-site visit confirmed with Dr. Rajesh Mehta",
+      "created_at": "2026-09-28T10:47:47.788Z"
+    }
+  ],
+  "payments": [
+    {
+      "id": 1,
+      "booking_id": 1,
+      "user_id": 1,
+      "amount": 1000,
+      "currency": "INR",
+      "payment_method": "UPI",
+      "payment_status": "completed",
+      "transaction_id": "TXN_CB_88492019",
+      "created_at": "2026-09-28T10:47:47.788Z"
+    }
+  ]
+}
