@@ -177,9 +177,9 @@ export function GoogleSignInButton({
         onSuccess();
       } else {
         if (data.user.role === "owner") {
-          navigate("/owner");
+          navigate("/owner", { replace: true });
         } else {
-          navigate("/map");
+          navigate("/map", { replace: true });
         }
       }
     } catch (networkErr: any) {

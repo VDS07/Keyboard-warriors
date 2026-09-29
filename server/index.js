@@ -73,7 +73,7 @@ function getCacheKey(lat, lng, city, purpose) {
   return `${roundedLat}_${roundedLng}_${(city || '').toLowerCase()}_${purpose || 'rent'}`;
 }
 
-async function ensureFreshData({ lat, lng, city, area, purpose = 'rent' }) {
+async function ensureFreshData({ lat, lng, city, area, purpose = 'rent', count }) {
   const cacheKey = getCacheKey(lat, lng, city, purpose);
   const isStale =
     memoryCache.properties.length === 0 ||
@@ -88,6 +88,8 @@ async function ensureFreshData({ lat, lng, city, area, purpose = 'rent' }) {
       city: city || 'Bengaluru',
       area: area || city || '',
       purpose: purpose || 'rent',
+      count,
+      offset: 0,
     });
     memoryCache.properties = listings;
     memoryCache.lastFetchKey = cacheKey;
@@ -361,7 +363,9 @@ app.get('/api/properties', async (req, res) => {
     minPrice,
     maxPrice,
     city,
-    area
+    area,
+    offset,
+    count
   } = req.query;
 
   try {
@@ -370,13 +374,54 @@ app.get('/api/properties', async (req, res) => {
     const validLat = !isNaN(targetLat) ? targetLat : 12.9345;
     const validLng = !isNaN(targetLng) ? targetLng : 77.6265;
 
+    // Handle "Load More" pagination request with offset
+    const parsedOffset = offset ? parseInt(offset, 10) : 0;
+    if (parsedOffset > 0) {
+      const parsedCount = count ? parseInt(count, 10) : (Math.floor(Math.random() * 11) + 15);
+      const moreListings = await fetchPropertiesForLocation({
+        lat: validLat,
+        lng: validLng,
+        city,
+        area,
+        purpose,
+        count: parsedCount,
+        offset: parsedOffset
+      });
+      memoryCache.properties.push(...moreListings);
+
+      let candidates = [...moreListings];
+      if (purpose) candidates = candidates.filter(p => p.purpose === purpose);
+      if (property_type) candidates = candidates.filter(p => p.property_type === property_type);
+      if (maxPrice) candidates = candidates.filter(p => p.price <= parseFloat(maxPrice));
+      if (minPrice) candidates = candidates.filter(p => p.price >= parseFloat(minPrice));
+
+      if (tMax && !isNaN(parseFloat(tMax))) {
+        const maxCommute = parseFloat(tMax);
+        const vmax = MODE_SPEED_BOUNDS[mode] || 1.33;
+        const result = [];
+        for (const p of candidates) {
+          const dh = getHaversineDistanceKm(validLat, validLng, p.latitude, p.longitude);
+          if (dh / vmax > maxCommute) continue;
+          const networkTortuosityFactor = mode === 'walk' ? 1.25 : mode === 'cycle' ? 1.3 : 1.45;
+          const speedKmPerHour = mode === 'drive' ? 32 : mode === 'transit' ? 22 : mode === 'cycle' ? 14 : 4.5;
+          const estimatedMinutes = Math.max(1, Math.round((dh * networkTortuosityFactor / speedKmPerHour) * 60));
+          if (estimatedMinutes <= maxCommute) {
+            result.push({ ...p, distanceKm: dh, commuteMinutes: estimatedMinutes });
+          }
+        }
+        return res.json(result);
+      }
+      return res.json(candidates);
+    }
+
     // Live-fetch properties for the selected location
     await ensureFreshData({
       lat: validLat,
       lng: validLng,
       city,
       area,
-      purpose
+      purpose,
+      count: count ? parseInt(count, 10) : undefined
     });
 
     let candidates = [...memoryCache.properties];
@@ -709,7 +754,7 @@ if (!process.env.VERCEL) {
 
     // Pre-warm cache with initial fetch
     try {
-      await ensureFreshData('bengaluru', 'rent');
+      await ensureFreshData({ city: 'Bengaluru', purpose: 'rent' });
     } catch (err) {
       console.log(`⚠️  Initial fetch failed (will retry on first request): ${err.message}`);
     }

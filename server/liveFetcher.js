@@ -268,9 +268,16 @@ export async function fetchPropertiesForLocation({
   city = 'Bengaluru',
   area = '',
   purpose = 'rent',
-  count = 28,
+  count,
+  offset = 0,
 }) {
-  console.log(`📡 Live Property Fetch requested at (${lat.toFixed(4)}, ${lng.toFixed(4)}) - city="${city}", area="${area}", purpose="${purpose}"`);
+  // If count is not explicitly specified, generate a random number of properties (e.g. 38 to 58)
+  const actualCount = (count !== undefined && count !== null && !isNaN(Number(count)))
+    ? Math.max(1, parseInt(count, 10))
+    : Math.floor(Math.random() * 21) + 38;
+  const actualOffset = Math.max(0, parseInt(offset || 0, 10));
+
+  console.log(`📡 Live Property Fetch requested at (${lat.toFixed(4)}, ${lng.toFixed(4)}) - city="${city}", area="${area}", purpose="${purpose}", count=${actualCount}, offset=${actualOffset}`);
 
   // Step 1: Query Overpass API for real apartments in this area
   const [overpassBuildings, portalResults] = await Promise.allSettled([
@@ -289,7 +296,7 @@ export async function fetchPropertiesForLocation({
 
   const localAreaName = area ? area.split(',')[0].trim() : (city || 'City Center');
 
-  for (let i = 0; i < count; i++) {
+  for (let i = actualOffset; i < actualOffset + actualCount; i++) {
     const seed = dateSeed * 100 + i;
     const r = (offset) => seededRandom(seed + offset);
 
@@ -430,7 +437,7 @@ export async function fetchPropertiesForLocation({
 }
 
 // Keep backward-compatible signature
-export async function fetchAllPortals(city = 'bengaluru', purpose = 'rent') {
+export async function fetchAllPortals(city = 'bengaluru', purpose = 'rent', count, offset = 0) {
   const cityKey = city.toLowerCase().trim();
   const center = CITY_CENTERS[cityKey] || CITY_CENTERS['bengaluru'];
   return fetchPropertiesForLocation({
@@ -439,5 +446,7 @@ export async function fetchAllPortals(city = 'bengaluru', purpose = 'rent') {
     city: center.name,
     area: center.name,
     purpose,
+    count,
+    offset,
   });
 }

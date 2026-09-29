@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import { Calculator as CalcIcon, Clock, Leaf, DollarSign, ArrowRight, ShieldChec
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 
 export default function Calculator() {
+  const navigate = useNavigate();
   const [rent, setRent] = useState<number>(25000);
   const [oneWayKm, setOneWayKm] = useState<number>(12);
   const [daysPerWeek, setDaysPerWeek] = useState<number>(5);
@@ -62,16 +64,25 @@ export default function Calculator() {
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 space-y-8">
         
         {/* Header */}
-        <div className="text-center max-w-2xl mx-auto space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-400 text-xs font-semibold uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5" /> Commute & Rent Financial Engine
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-white/10 pb-6">
+          <div className="text-left space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-400 text-xs font-semibold uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5" /> Commute & Rent Financial Engine
+            </div>
+            <h1 className="text-3xl md:text-5xl font-black tracking-tight">
+              Calculate True Living Cost
+            </h1>
+            <p className="text-zinc-400 text-sm md:text-base leading-relaxed">
+              Factor in hidden travel expenses, annual travel hours, and environmental impact before choosing your home.
+            </p>
           </div>
-          <h1 className="text-3xl md:text-5xl font-black tracking-tight">
-            Calculate True Living Cost
-          </h1>
-          <p className="text-zinc-400 text-sm md:text-base leading-relaxed">
-            Factor in hidden travel expenses, annual travel hours, and environmental impact before choosing your home.
-          </p>
+          <Button
+            variant="outline"
+            onClick={() => navigate("/map")}
+            className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10 rounded-xl text-xs font-semibold flex items-center gap-1.5 self-start md:self-auto"
+          >
+            ← Back to Map
+          </Button>
         </div>
 
         {/* Grid Layout */}

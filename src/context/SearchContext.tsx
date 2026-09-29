@@ -126,6 +126,7 @@ type SearchState = {
   isRouteLoading: boolean;
   isWorkplaceLocked: boolean;
   isPropertiesLoading: boolean;
+  isLoadingMore: boolean;
   fetchStatusMessage: string;
   selectedBhk: number | null;
   selectedPropertyType: string | null;
@@ -166,6 +167,7 @@ type SearchContextType = SearchState & {
   filteredProperties: EnrichedProperty[];
   allRawProperties: Property[];
   refreshData: (customLat?: number, customLng?: number, customLabel?: string, customPurpose?: Purpose) => Promise<void>;
+  loadMoreProperties: () => Promise<void>;
   setIsWorkplaceLocked: (locked: boolean | ((prev: boolean) => boolean)) => void;
   setSelectedBhk: (bhk: number | null) => void;
   setSelectedPropertyType: (type: string | null) => void;
@@ -259,6 +261,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 
   // Loading & status
   const [isPropertiesLoading, setIsPropertiesLoading] = useState<boolean>(true);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
   const [fetchStatusMessage, setFetchStatusMessage] = useState<string>("Initializing live API discovery...");
 
   const [rankingWeights, setRankingWeights] = useState<RankingWeights>({
@@ -274,6 +277,56 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [activeRoute, setActiveRoute] = useState<ActiveRoute | null>(null);
   const [isRouteLoading, setIsRouteLoading] = useState<boolean>(false);
   const [isWorkplaceLocked, setIsWorkplaceLocked] = useState<boolean>(true);
+
+  const mapBackendProperty = (p: any, fallbackCity: string): Property => ({
+    id: p.id,
+    owner_id: p.owner_id,
+    title: p.title,
+    price: p.price,
+    recommendedPrice: p.recommendedPrice,
+    lat: p.latitude || p.lat,
+    lng: p.longitude || p.lng,
+    bedrooms: p.bedrooms,
+    bathrooms: p.bathrooms,
+    sqft: p.sqft,
+    image: (p.images && p.images[0]) || p.image || "",
+    images:
+      Array.isArray(p.images) && p.images.length > 0
+        ? p.images
+        : p.image
+        ? [p.image]
+        : [],
+    type: p.property_type || p.type || "apartment",
+    livabilityScore: p.livability_score || p.livabilityScore || 85,
+    petFriendly: p.pet_friendly !== undefined ? p.pet_friendly : p.petFriendly,
+    furnished: p.furnished || "semi-furnished",
+    description: p.description,
+    city: p.city || fallbackCity || "",
+    address: p.address,
+    brokerSource: p.source_portal || p.brokerSource || "Portal",
+    contactName: p.owner || p.contactName,
+    contactPhone: p.phone || p.contactPhone,
+    views: p.views || 0,
+    inquiries: p.inquiries || 0,
+    commute_discoveries: p.commute_discoveries,
+    sourceUrl: p.source_url || p.sourceUrl,
+    societyName: p.society_name || p.societyName,
+    reraId: p.rera_id || p.reraId,
+    carpetSqft: p.carpet_area || p.carpetSqft || Math.round((p.sqft || 1000) * 0.78),
+    superSqft: p.super_area || p.superSqft || p.sqft || 1000,
+    floor: p.floor,
+    facing: p.facing,
+    securityDeposit: p.security_deposit || p.securityDeposit,
+    maintenance: p.maintenance,
+    availability: p.availability || "Ready to Move",
+    propertyAge: p.property_age || p.propertyAge,
+    waterSupply: p.water_supply || p.waterSupply,
+    powerBackup: p.power_backup || p.powerBackup,
+    gatedCommunity: p.gated_community !== undefined ? p.gated_community : true,
+    verifiedBadge: p.verified_badge || p.verifiedBadge,
+    brokerType: p.broker_type || p.brokerType,
+    amenities: Array.isArray(p.amenities) && p.amenities.length > 0 ? p.amenities : [],
+  });
 
   // Live-fetch from backend (proxies to real estate portals + Overpass API)
   // NO local file storage — everything streamed dynamically via API
@@ -308,55 +361,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          const mapped: Property[] = data.map((p: any) => ({
-            id: p.id,
-            owner_id: p.owner_id,
-            title: p.title,
-            price: p.price,
-            recommendedPrice: p.recommendedPrice,
-            lat: p.latitude || p.lat,
-            lng: p.longitude || p.lng,
-            bedrooms: p.bedrooms,
-            bathrooms: p.bathrooms,
-            sqft: p.sqft,
-            image: (p.images && p.images[0]) || p.image || "",
-            images:
-              Array.isArray(p.images) && p.images.length > 0
-                ? p.images
-                : p.image
-                ? [p.image]
-                : [],
-            type: p.property_type || p.type || "apartment",
-            livabilityScore: p.livability_score || p.livabilityScore || 85,
-            petFriendly: p.pet_friendly !== undefined ? p.pet_friendly : p.petFriendly,
-            furnished: p.furnished || "semi-furnished",
-            description: p.description,
-            city: p.city || city || "",
-            address: p.address,
-            brokerSource: p.source_portal || p.brokerSource || "Portal",
-            contactName: p.owner || p.contactName,
-            contactPhone: p.phone || p.contactPhone,
-            views: p.views || 0,
-            inquiries: p.inquiries || 0,
-            commute_discoveries: p.commute_discoveries,
-            sourceUrl: p.source_url || p.sourceUrl,
-            societyName: p.society_name || p.societyName,
-            reraId: p.rera_id || p.reraId,
-            carpetSqft: p.carpet_area || p.carpetSqft || Math.round((p.sqft || 1000) * 0.78),
-            superSqft: p.super_area || p.superSqft || p.sqft || 1000,
-            floor: p.floor,
-            facing: p.facing,
-            securityDeposit: p.security_deposit || p.securityDeposit,
-            maintenance: p.maintenance,
-            availability: p.availability || "Ready to Move",
-            propertyAge: p.property_age || p.propertyAge,
-            waterSupply: p.water_supply || p.waterSupply,
-            powerBackup: p.power_backup || p.powerBackup,
-            gatedCommunity: p.gated_community !== undefined ? p.gated_community : true,
-            verifiedBadge: p.verified_badge || p.verifiedBadge,
-            brokerType: p.broker_type || p.brokerType,
-            amenities: Array.isArray(p.amenities) && p.amenities.length > 0 ? p.amenities : [],
-          }));
+          const mapped: Property[] = data.map((p: any) => mapBackendProperty(p, city));
           setRawProperties(mapped);
           setFetchStatusMessage(
             `✅ Loaded ${mapped.length} live properties near ${area || city} (Zero local storage)`
@@ -367,6 +372,47 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       setFetchStatusMessage("Connecting to property stream...");
     } finally {
       setIsPropertiesLoading(false);
+    }
+  };
+
+  const loadMoreProperties = async () => {
+    if (isLoadingMore || isPropertiesLoading) return;
+    setIsLoadingMore(true);
+
+    const parts = workplace.label.split(",").map((s) => s.trim());
+    const area = parts[0] || "";
+    const city =
+      parts.length > 1
+        ? parts[parts.length - (parts[parts.length - 1].toLowerCase() === "india" ? 2 : 1)]
+        : area;
+
+    const offset = rawProperties.length;
+    // Generate a randomized batch count between 14 and 24
+    const batchCount = Math.floor(Math.random() * 11) + 14;
+
+    try {
+      const url = `${API_BASE_URL}/api/properties?lat=${workplace.lat}&lng=${workplace.lng}&city=${encodeURIComponent(
+        city
+      )}&area=${encodeURIComponent(area)}&purpose=${purpose}&offset=${offset}&count=${batchCount}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped: Property[] = data.map((p: any) => mapBackendProperty(p, city));
+          setRawProperties((prev) => {
+            const existingIds = new Set(prev.map((item) => item.id));
+            const newItems = mapped.filter((item) => !existingIds.has(item.id));
+            return [...prev, ...newItems];
+          });
+          setFetchStatusMessage(
+            `✅ Loaded ${mapped.length} more properties near ${area || city} (Total: ${rawProperties.length + mapped.length})`
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load more properties:", err);
+    } finally {
+      setIsLoadingMore(false);
     }
   };
 
@@ -767,6 +813,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         filteredProperties,
         allRawProperties: rawProperties,
         refreshData,
+        loadMoreProperties,
         activeRoute,
         isRouteLoading,
         isWorkplaceLocked,
@@ -774,6 +821,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         minPrice,
         setMinPrice,
         isPropertiesLoading,
+        isLoadingMore,
         fetchStatusMessage,
         selectedBhk,
         setSelectedBhk,

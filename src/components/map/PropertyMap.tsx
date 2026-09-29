@@ -20,33 +20,34 @@ type PropertyMapProps = {
   hideControls?: boolean;
 };
 
-export type MapViewMode = "normal" | "openmaps" | "satellite" | "hd";
+export type MapViewMode = "osm" | "streets" | "topo" | "satellite";
 
-const CARTO_API_KEY = (import.meta.env.VITE_CARTO_API_KEY as string) || "cb1_2w7k_1_41073939576e71e4cdbd81fb";
-const cartoParam = CARTO_API_KEY ? `?api_key=${CARTO_API_KEY}` : "";
-
-const TILE_SERVERS: Record<MapViewMode, { url: string; attribution: string; subdomains: string; maxZoom: number }> = {
-  normal: {
-    url: `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png${cartoParam}`,
-    attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
-    subdomains: "abcd",
-    maxZoom: 19,
-  },
-  openmaps: {
+const TILE_SERVERS: Record<MapViewMode, { label: string; url: string; attribution: string; subdomains: string; maxZoom: number }> = {
+  osm: {
+    label: "OSM Standard",
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     attribution: "&copy; OpenStreetMap contributors",
     subdomains: "abc",
     maxZoom: 19,
   },
-  hd: {
-    url: `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png${cartoParam}`,
-    attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
-    subdomains: "abcd",
+  streets: {
+    label: "Esri Streets",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles &copy; Esri",
+    subdomains: "",
+    maxZoom: 19,
+  },
+  topo: {
+    label: "Esri Topo",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles &copy; Esri &mdash; Sources: GEBCO, USGS, NOAA",
+    subdomains: "",
     maxZoom: 19,
   },
   satellite: {
+    label: "Satellite",
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    attribution: "&copy; Esri",
+    attribution: "Tiles &copy; Esri",
     subdomains: "",
     maxZoom: 18,
   },
@@ -97,7 +98,7 @@ export const PropertyMap = ({
     }
   }, [isWorkplaceLocked]);
 
-  const [mapViewMode, setMapViewMode] = useState<MapViewMode>("normal");
+  const [mapViewMode, setMapViewMode] = useState<MapViewMode>("osm");
   const [popupPropertyId, setPopupPropertyId] = useState<number | null>(null);
 
   const activeProperty = properties.find((p) => p.id === focusedPropertyId) || properties.find((p) => p.id === popupPropertyId);
@@ -122,7 +123,7 @@ export const PropertyMap = ({
       touchZoom: true,
     });
 
-    const initialServer = TILE_SERVERS.normal;
+    const initialServer = TILE_SERVERS.osm;
     const tileLayer = L.tileLayer(initialServer.url, {
       subdomains: initialServer.subdomains,
       maxZoom: initialServer.maxZoom,
@@ -481,19 +482,19 @@ export const PropertyMap = ({
             </button>
           </div>
 
-          {/* Map Layer Switcher (Section XVII) */}
+          {/* Map Layer Switcher */}
           <div className="pointer-events-auto absolute bottom-6 left-6 z-[500] flex items-center gap-1.5 p-1 rounded-full bg-black/80 border border-white/10 backdrop-blur-xl shadow-2xl">
-            {(["normal", "openmaps", "hd", "satellite"] as MapViewMode[]).map((mode) => (
+            {(["osm", "streets", "topo", "satellite"] as MapViewMode[]).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setMapViewMode(mode)}
-                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all capitalize ${
+                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all ${
                   mapViewMode === mode
                     ? "bg-purple-600 text-white shadow-md shadow-purple-600/30"
                     : "text-zinc-400 hover:text-white hover:bg-white/5"
                 }`}
               >
-                {mode === "normal" ? "Dark Carto" : mode === "openmaps" ? "OSM" : mode === "hd" ? "Voyager" : "Satellite"}
+                {TILE_SERVERS[mode].label}
               </button>
             ))}
           </div>

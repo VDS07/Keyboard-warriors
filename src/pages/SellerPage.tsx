@@ -116,6 +116,15 @@ export default function SellerPage() {
     <div ref={containerRef} className="relative bg-zinc-950 text-white font-sans" style={{ height: "100vh" }}>
       <input type="file" multiple accept="image/*" ref={fileInputRef} onChange={handleImageUpload} className="hidden" />
 
+      {/* Top Left Back to Map Button */}
+      <button
+        type="button"
+        onClick={() => navigate("/map")}
+        className="fixed top-4 left-4 z-[500] flex items-center gap-1.5 bg-zinc-900/90 hover:bg-zinc-800 backdrop-blur-xl border border-white/10 rounded-full px-3.5 py-2 text-xs font-semibold text-zinc-300 hover:text-white transition-all shadow-xl"
+      >
+        ← Back to Map
+      </button>
+
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[500] flex items-center gap-2 bg-zinc-900/90 backdrop-blur-xl border border-white/10 rounded-full px-4 py-2 shadow-2xl">
         {(["property", "owner", "preview"] as FormStep[]).map((s, i) => (
           <button

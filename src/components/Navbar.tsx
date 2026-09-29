@@ -1,11 +1,13 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSearch } from "@/context/SearchContext";
-import { Map, Calculator, Heart, BarChart3, Building2, Home } from "lucide-react";
+import { Map, Calculator, Heart, BarChart3, Building2, Home, LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 export const Navbar = () => {
   const location = useLocation();
-  const { savedPropertyIds, userRole, setUserRole, userProfile, loginWithGoogleDemo } = useSearch();
+  const navigate = useNavigate();
+  const { savedPropertyIds, userRole, setUserRole, userProfile, loginWithGoogleDemo, logout } = useSearch();
 
   const navLinks = [
     { path: "/map", label: "Live Map", icon: Map },
@@ -19,9 +21,12 @@ export const Navbar = () => {
     <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-zinc-950/85 border-b border-white/10 px-3 lg:px-8 py-2.5 transition-all">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         
-        {/* Brand Logo */}
+        {/* Brand Logo - Links to /map if logged in, or / if logged out */}
         <div className="flex items-center gap-3">
-          <Link to="/" className="flex items-center gap-2.5 group">
+          <Link
+            to={userProfile.isLoggedIn ? (userRole === "owner" ? "/owner" : "/map") : "/"}
+            className="flex items-center gap-2.5 group"
+          >
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-purple-500/25 group-hover:scale-105 transition-transform">
               <Home className="w-5 h-5 text-white" />
             </div>
@@ -96,16 +101,40 @@ export const Navbar = () => {
             </button>
           </div>
 
-          {/* Profile Avatar / Indicator */}
-          <div className="flex items-center gap-2 pl-1 border-l border-white/10 hidden sm:flex">
-            <img
-              src={userProfile.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100"}
-              alt={userProfile.name}
-              className="w-7 h-7 rounded-full border border-purple-500/40 object-cover"
-            />
-            <span className="text-xs text-zinc-300 font-medium max-w-[110px] truncate">
-              {userProfile.name.split(" ")[0]}
-            </span>
+          {/* Profile Avatar / Indicator & Logout */}
+          <div className="flex items-center gap-2 pl-2 border-l border-white/10">
+            <div className="flex items-center gap-1.5 hidden sm:flex">
+              <img
+                src={userProfile.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100"}
+                alt={userProfile.name}
+                className="w-7 h-7 rounded-full border border-purple-500/40 object-cover"
+              />
+              <span className="text-xs text-zinc-300 font-medium max-w-[100px] truncate">
+                {userProfile.name.split(" ")[0]}
+              </span>
+            </div>
+
+            {userProfile.isLoggedIn ? (
+              <button
+                onClick={() => {
+                  logout();
+                  toast.info("Logged out successfully");
+                  navigate("/login", { replace: true });
+                }}
+                className="px-2.5 py-1 rounded-xl text-xs font-medium text-zinc-400 hover:text-red-300 hover:bg-red-500/10 border border-white/10 hover:border-red-500/30 transition-all flex items-center gap-1"
+                title="Log Out of Commute Buddy"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Logout</span>
+              </button>
+            ) : (
+              <Link
+                to="/login"
+                className="px-3 py-1 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white shadow-sm transition-all"
+              >
+                Sign In
+              </Link>
+            )}
           </div>
         </div>
 

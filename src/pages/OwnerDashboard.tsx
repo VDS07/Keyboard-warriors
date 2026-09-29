@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { Eye, MousePointerClick, TrendingUp, Building2, MapPin, AlertCircle, Plus, Upload, Trash2, Edit3, Sparkles, CheckCircle2, RefreshCw } from "lucide-react";
+import { Eye, MousePointerClick, TrendingUp, Building2, MapPin, AlertCircle, Plus, Upload, Trash2, Edit3, Sparkles, CheckCircle2, RefreshCw, Map } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -159,6 +159,15 @@ export default function OwnerDashboard() {
           </div>
 
           <div className="flex items-center gap-2.5">
+            <Button
+              variant="outline"
+              onClick={() => navigate("/map")}
+              className="border-white/10 text-zinc-300 hover:text-white rounded-xl text-xs flex items-center gap-1.5"
+            >
+              <Map className="w-3.5 h-3.5 text-purple-400" />
+              <span>Live Map</span>
+            </Button>
+
             <Button
               onClick={() => setScraperModalOpen(true)}
               variant="outline"

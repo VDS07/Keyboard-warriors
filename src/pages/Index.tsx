@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { PropertyCard } from "@/components/PropertyCard";
 import { PropertyDetailModal } from "@/components/PropertyDetailModal";
 import { Navbar } from "@/components/Navbar";
-import { useSearch, TransportMode, WorkplaceIcon, EnrichedProperty } from "@/context/SearchContext";
+import { useSearch, TransportMode, EnrichedProperty } from "@/context/SearchContext";
 import {
   Car,
   Train,
@@ -25,7 +25,9 @@ import {
   Building,
   RotateCcw,
   Search,
-  Check
+  Check,
+  Loader2,
+  PlusCircle
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -45,13 +47,6 @@ const TRANSPORT_MODES: { value: TransportMode; label: string; icon: typeof Car }
   { value: "walk", label: "Walk", icon: Footprints },
 ];
 
-const WORKPLACE_ICONS: { value: WorkplaceIcon; label: string; emoji: string }[] = [
-  { value: "office", label: "Office", emoji: "🏢" },
-  { value: "university", label: "Campus", emoji: "🎓" },
-  { value: "hospital", label: "Hospital", emoji: "🏥" },
-  { value: "briefcase", label: "Hub", emoji: "💼" },
-  { value: "pin", label: "Pin", emoji: "📍" },
-];
 
 // Popular Indian City / Tech Hub shortcuts for 1-click exploration
 const POPULAR_HUBS = [
@@ -67,7 +62,6 @@ const POPULAR_HUBS = [
 const Index = () => {
   const {
     workplace, setWorkplace,
-    workplaceIcon, setWorkplaceIcon,
     maxCommute, setMaxCommute,
     transportMode, setTransportMode,
     focusedPropertyId, setFocusedPropertyId,
@@ -77,7 +71,9 @@ const Index = () => {
     isWorkplaceLocked,
     setIsWorkplaceLocked,
     refreshData,
+    loadMoreProperties,
     isPropertiesLoading,
+    isLoadingMore,
     fetchStatusMessage,
     purpose, setPurpose,
     maxPrice, setMaxPrice,
@@ -216,25 +212,7 @@ const Index = () => {
           
           <div className="pointer-events-auto flex items-center gap-2 py-2 px-3 sm:px-4 rounded-2xl shadow-2xl border border-white/10 bg-zinc-950/92 backdrop-blur-2xl">
             
-            {/* Workplace Anchor Icon Dropdown */}
-            <div className="flex items-center gap-0.5">
-              {WORKPLACE_ICONS.map(({ value, emoji, label }) => (
-                <button
-                  key={value}
-                  onClick={() => setWorkplaceIcon(value)}
-                  className={`p-1.5 rounded-lg text-xs transition-all ${
-                    workplaceIcon === value
-                      ? "bg-purple-600/30 text-purple-300 border border-purple-500/40"
-                      : "text-zinc-400 hover:text-white hover:bg-white/5"
-                  }`}
-                  title={`Anchor Type: ${label}`}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
 
-            <div className="w-px h-6 bg-white/10 hidden sm:block" />
 
             {/* Workplace Free-Text Search Input (Nominatim) */}
             <form onSubmit={handleWorkplaceSearch} className="flex-1 min-w-[130px] flex items-center">
@@ -710,20 +688,49 @@ const Index = () => {
                   </p>
                 </div>
               ) : filteredProperties.length ? (
-                filteredProperties.map((property) => (
-                  <PropertyCard
-                    key={property.id}
-                    property={property}
-                    isFocused={focusedPropertyId === property.id}
-                    onFocus={() => setFocusedPropertyId(property.id)}
-                    onClick={() => {
-                      setSelectedPropertyId(property.id);
-                      setShowRoutePanel(true);
-                      setRoutePanelCollapsed(false);
-                    }}
-                    onOpenDetails={() => setDetailModalProperty(property)}
-                  />
-                ))
+                <>
+                  {filteredProperties.map((property) => (
+                    <PropertyCard
+                      key={property.id}
+                      property={property}
+                      isFocused={focusedPropertyId === property.id}
+                      onFocus={() => setFocusedPropertyId(property.id)}
+                      onClick={() => {
+                        setSelectedPropertyId(property.id);
+                        setShowRoutePanel(true);
+                        setRoutePanelCollapsed(false);
+                      }}
+                      onOpenDetails={() => setDetailModalProperty(property)}
+                    />
+                  ))}
+
+                  {/* Load More Button */}
+                  <div className="pt-2 pb-5 text-center">
+                    <Button
+                      onClick={async () => {
+                        await loadMoreProperties();
+                        toast.success("Loaded more properties around your anchor!");
+                      }}
+                      disabled={isLoadingMore}
+                      className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white font-medium text-xs shadow-lg shadow-purple-900/30 transition-all flex items-center justify-center gap-2 border border-purple-400/25 active:scale-[0.98] disabled:opacity-60"
+                    >
+                      {isLoadingMore ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin text-white" />
+                          <span>Streaming more live listings...</span>
+                        </>
+                      ) : (
+                        <>
+                          <PlusCircle className="w-4 h-4 text-purple-200" />
+                          <span>Load More Properties</span>
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-[11px] text-zinc-400 mt-1.5 flex items-center justify-center gap-1">
+                      <span>Showing {filteredProperties.length} live properties</span>
+                    </p>
+                  </div>
+                </>
               ) : (
                 <div className="rounded-2xl border border-dashed border-white/10 p-5 text-center space-y-2">
                   <p className="text-sm font-semibold text-white">No properties match your filters</p>
